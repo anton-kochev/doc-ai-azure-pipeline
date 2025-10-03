@@ -30,6 +30,14 @@ appliesTo: ["**/*.ts", "**/*.html"]
 - **Directives**: `feature-name.directive.ts`
 - **Pipes**: `feature-name.pipe.ts`
 
+## CSS/SCSS Styling
+
+- Use BEM (Block Element Modifier) methodology for CSS class naming
+- Block: represents a standalone component (e.g., `.user-card`)
+- Element: part of a block, separated by `__` (e.g., `.user-card__header`)
+- Modifier: variant or state, separated by `--` (e.g., `.user-card--featured`)
+- Example: `.upload-form__submit-button--disabled`
+
 ## TypeScript Style
 
 - Prefer `const` over `let`, never use `var`

@@ -41,6 +41,16 @@ Components should follow this order:
 - Use signals for reactive state management
 - Avoid mutating objects; prefer immutable updates
 
+## Styling
+
+- Use SCSS for component styles
+- Follow BEM (Block Element Modifier) naming convention:
+  - Block: component name (e.g., `.user-card`)
+  - Element: use `__` separator (e.g., `.user-card__title`)
+  - Modifier: use `--` separator (e.g., `.user-card--highlighted`)
+- Scope styles to component using `:host` selector when needed
+- Avoid deep selectors (`::ng-deep`) unless absolutely necessary
+
 ## Example
 
 ```typescript
@@ -68,6 +78,74 @@ export class UserCardComponent {
   // Public methods
   selectUser(): void {
     this.userSelected.emit(this.user());
+  }
+}
+```
+
+### Template Example (user-card.component.html)
+
+```html
+<div class="user-card user-card--highlighted">
+  <div class="user-card__header">
+    <h3 class="user-card__title">{{ user().name }}</h3>
+  </div>
+  <div class="user-card__body">
+    <p class="user-card__description">{{ user().bio }}</p>
+  </div>
+  <button class="user-card__action-button" (click)="selectUser()">
+    Select
+  </button>
+</div>
+```
+
+### Style Example (user-card.component.scss)
+
+```scss
+.user-card {
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 4px;
+
+  &--highlighted {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+  }
+
+  &__header {
+    margin-bottom: 12px;
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  &__body {
+    margin-bottom: 16px;
+  }
+
+  &__description {
+    color: #666;
+    margin: 0;
+  }
+
+  &__action-button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #0056b3;
+    }
+
+    &:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
   }
 }
 ```
