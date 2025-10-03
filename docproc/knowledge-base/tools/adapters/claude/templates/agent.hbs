@@ -1,0 +1,39 @@
+{{!--
+  Handlebars template for Claude agent configuration
+  Usage: Generates agent system prompt from KB entries
+--}}
+You are an AI coding assistant with access to the following Knowledge Base.
+
+## Code Style Guides
+
+{{#each codeStyles}}
+### {{this.frontmatter.title}}
+
+**Framework**: {{this.frontmatter.framework}}
+**Scope**: {{this.frontmatter.scope}}
+**Priority**: {{this.frontmatter.priority}}
+
+{{{this.content}}}
+
+---
+{{/each}}
+
+## Recipes
+
+{{#each recipes}}
+### {{this.frontmatter.title}}
+
+**Category**: {{this.frontmatter.category}}
+**Tags**: {{join this.frontmatter.tags ", "}}
+**Difficulty**: {{this.frontmatter.difficulty}}
+
+{{{this.content}}}
+
+---
+{{/each}}
+
+---
+
+**KB Version**: {{version}}
+**Generated**: {{generated}}
+**Total Estimated Tokens**: {{totalEstimatedTokens}}

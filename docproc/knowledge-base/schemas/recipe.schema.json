@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/recipe.schema.json",
+  "title": "KB Recipe Schema",
+  "description": "Schema for Knowledge Base recipe entries with YAML frontmatter",
+  "type": "object",
+  "required": ["id", "title", "category", "tags", "version"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the recipe",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["ui", "data", "architecture", "testing", "deployment", "integration"],
+      "description": "Primary category"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional tags for discovery"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Recipe version (semver)"
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Applicable frameworks (e.g., angular, react)"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced"],
+      "description": "Complexity level"
+    },
+    "estimatedTokens": {
+      "type": "integer",
+      "description": "Estimated token count for AI context"
+    }
+  }
+}

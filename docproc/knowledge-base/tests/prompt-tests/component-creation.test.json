@@ -1,0 +1,64 @@
+{
+  "name": "Component Creation Test",
+  "description": "Tests if AI agent correctly applies Angular component style rules from KB",
+  "kbVersion": "1.0.0",
+  "tests": [
+    {
+      "id": "test-001",
+      "name": "Create OnPush component with signals",
+      "prompt": "Create an Angular component called UserProfileComponent that displays user information. Use OnPush change detection and signals for inputs.",
+      "expectedPatterns": [
+        "changeDetection: ChangeDetectionStrategy.OnPush",
+        "input\\(\\)",
+        "readonly",
+        "inject\\("
+      ],
+      "forbiddenPatterns": [
+        "@Input\\(\\)",
+        "constructor\\(",
+        "any\\s"
+      ],
+      "category": "component-creation"
+    },
+    {
+      "id": "test-002",
+      "name": "Component with proper structure order",
+      "prompt": "Create a DataTableComponent with inputs for data, outputs for selection, and a method to filter data.",
+      "expectedPatterns": [
+        "@Component",
+        "input.*required",
+        "output\\(\\)",
+        "private readonly",
+        "public.*\\(\\).*\\{"
+      ],
+      "forbiddenPatterns": [
+        "private.*before.*public",
+        "methods.*before.*properties"
+      ],
+      "category": "component-structure"
+    },
+    {
+      "id": "test-003",
+      "name": "Table with filters recipe application",
+      "prompt": "Create a data table with text search and status filter dropdown.",
+      "expectedPatterns": [
+        "MatTableDataSource",
+        "signal\\(",
+        "computed\\(",
+        "takeUntilDestroyed",
+        "mat-table",
+        "mat-form-field"
+      ],
+      "forbiddenPatterns": [
+        "subscribe.*without.*takeUntil",
+        "any\\s"
+      ],
+      "category": "recipe-application"
+    }
+  ],
+  "metadata": {
+    "framework": "angular",
+    "created": "2025-10-03",
+    "author": "kb-team"
+  }
+}

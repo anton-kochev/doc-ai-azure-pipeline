@@ -1,0 +1,39 @@
+{{!--
+  Handlebars template for Cursor mode configuration
+  Usage: Generates .cursorrules content from KB
+--}}
+# Cursor AI Rules - Knowledge Base
+
+Generated from Universal Knowledge Base v{{version}}
+
+## Instructions
+
+Follow these code style guides and recipes when assisting with development.
+
+## Code Style Guides
+
+{{#each codeStyles}}
+### {{this.frontmatter.title}}
+
+Framework: {{this.frontmatter.framework}}
+Priority: {{this.frontmatter.priority}}
+Applies To: {{join this.frontmatter.appliesTo ", "}}
+
+{{{this.content}}}
+
+---
+{{/each}}
+
+## Recipes
+
+{{#each recipes}}
+### {{this.frontmatter.title}}
+
+Category: {{this.frontmatter.category}}
+Frameworks: {{join this.frontmatter.frameworks ", "}}
+Difficulty: {{this.frontmatter.difficulty}}
+
+{{{this.content}}}
+
+---
+{{/each}}

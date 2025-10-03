@@ -1,0 +1,32 @@
+# Knowledge Base Owners
+#
+# This file defines owners for different sections of the Knowledge Base.
+# Owners are responsible for reviewing and approving changes to their sections.
+#
+# Format:
+# path/to/section @github-username @another-username
+
+# Overall KB maintainers
+* @anton-kochev
+
+# Core structure and schemas
+/core.md @anton-kochev
+/schemas/ @anton-kochev
+
+# Code style guides
+/code-style/ @anton-kochev
+/code-style/angular/ @anton-kochev
+
+# Recipes
+/recipes/ @anton-kochev
+
+# Tools and adapters
+/tools/ @anton-kochev
+/tools/adapters/claude/ @anton-kochev
+/tools/adapters/cursor/ @anton-kochev
+
+# Tests
+/tests/ @anton-kochev
+
+# CI/CD
+/.github/ @anton-kochev

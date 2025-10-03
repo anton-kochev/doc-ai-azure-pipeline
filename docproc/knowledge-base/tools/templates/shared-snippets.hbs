@@ -1,0 +1,48 @@
+{{!--
+  Shared Handlebars snippets and helpers
+  Used across multiple adapter templates
+--}}
+
+{{!-- Helper: Join array with separator --}}
+{{#*inline "join"}}
+  {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/inline}}
+
+{{!-- Helper: Format timestamp --}}
+{{#*inline "formatDate"}}
+  {{date this "YYYY-MM-DD HH:mm:ss"}}
+{{/inline}}
+
+{{!-- Helper: Token estimate badge --}}
+{{#*inline "tokenBadge"}}
+  {{#if this.estimatedTokens}}
+    [~{{this.estimatedTokens}} tokens]
+  {{/if}}
+{{/inline}}
+
+{{!-- Helper: Priority badge --}}
+{{#*inline "priorityBadge"}}
+  {{#if this.priority}}
+    {{#if (eq this.priority "must")}}**MUST**{{/if}}
+    {{#if (eq this.priority "should")}}*SHOULD*{{/if}}
+    {{#if (eq this.priority "may")}}MAY{{/if}}
+  {{/if}}
+{{/inline}}
+
+{{!-- Section divider --}}
+{{#*inline "divider"}}
+---
+{{/inline}}
+
+{{!-- Header with metadata --}}
+{{#*inline "entryHeader"}}
+## {{this.frontmatter.title}}
+
+{{> tokenBadge this.frontmatter}}
+{{> priorityBadge this.frontmatter}}
+
+{{#if this.frontmatter.framework}}**Framework**: {{this.frontmatter.framework}}{{/if}}
+{{#if this.frontmatter.category}}**Category**: {{this.frontmatter.category}}{{/if}}
+{{#if this.frontmatter.tags}}**Tags**: {{> join this.frontmatter.tags}}{{/if}}
+
+{{/inline}}

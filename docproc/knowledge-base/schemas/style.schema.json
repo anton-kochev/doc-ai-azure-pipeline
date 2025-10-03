@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/style.schema.json",
+  "title": "KB Style Guide Schema",
+  "description": "Schema for Knowledge Base code style guide entries",
+  "type": "object",
+  "required": ["id", "title", "framework", "scope", "version"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the style guide",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title"
+    },
+    "framework": {
+      "type": "string",
+      "description": "Target framework (e.g., angular, react, dotnet)"
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["naming", "structure", "patterns", "formatting", "testing", "general"],
+      "description": "Area of focus"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Style guide version (semver)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["must", "should", "may"],
+      "description": "Enforcement level (RFC 2119)"
+    },
+    "appliesTo": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File patterns or scopes (e.g., *.component.ts)"
+    }
+  }
+}

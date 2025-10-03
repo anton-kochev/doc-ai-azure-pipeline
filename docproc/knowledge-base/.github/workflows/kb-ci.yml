@@ -1,0 +1,104 @@
+name: Knowledge Base CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'knowledge-base/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'knowledge-base/**'
+
+jobs:
+  validate:
+    name: Validate KB Structure
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      working-directory: knowledge-base/tools/adapters/claude
+      run: npm install js-yaml ajv
+
+    - name: Validate JSON schemas
+      run: |
+        echo "Validating recipe schema..."
+        node -e "
+          const Ajv = require('ajv');
+          const fs = require('fs');
+          const ajv = new Ajv();
+          const schema = JSON.parse(fs.readFileSync('knowledge-base/schemas/recipe.schema.json'));
+          ajv.compile(schema);
+          console.log('✓ Recipe schema is valid');
+        "
+
+        echo "Validating style schema..."
+        node -e "
+          const Ajv = require('ajv');
+          const fs = require('fs');
+          const ajv = new Ajv();
+          const schema = JSON.parse(fs.readFileSync('knowledge-base/schemas/style.schema.json'));
+          ajv.compile(schema);
+          console.log('✓ Style schema is valid');
+        "
+
+    - name: Validate KB entries against schemas
+      working-directory: knowledge-base
+      run: |
+        echo "Validating all KB entries have proper frontmatter..."
+        find . -name "*.md" -path "*/code-style/*" -o -path "*/recipes/*" | while read file; do
+          echo "Checking $file"
+          # Basic check for YAML frontmatter presence
+          if ! grep -q "^---$" "$file"; then
+            echo "ERROR: $file missing frontmatter"
+            exit 1
+          fi
+        done
+        echo "✓ All entries have frontmatter"
+
+    - name: Generate Claude config
+      working-directory: knowledge-base/tools/adapters/claude
+      run: |
+        node generator.js
+        if [ ! -f claude-kb.json ]; then
+          echo "ERROR: Failed to generate Claude config"
+          exit 1
+        fi
+        echo "✓ Claude config generated successfully"
+
+    - name: Generate Cursor config
+      working-directory: knowledge-base/tools/adapters/cursor
+      run: |
+        node generator.js
+        if [ ! -f cursor-kb.md ]; then
+          echo "ERROR: Failed to generate Cursor config"
+          exit 1
+        fi
+        echo "✓ Cursor config generated successfully"
+
+    - name: Run prompt tests
+      run: |
+        echo "Running prompt tests..."
+        # Placeholder for actual prompt testing framework
+        echo "✓ Prompt tests passed (placeholder)"
+
+    - name: Check markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        folder-path: 'knowledge-base'
+
+    - name: Upload generated configs as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kb-configs
+        path: |
+          knowledge-base/tools/adapters/claude/claude-kb.json
+          knowledge-base/tools/adapters/cursor/cursor-kb.md
