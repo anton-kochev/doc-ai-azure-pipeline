@@ -8,7 +8,7 @@ This is a document AI pipeline project ("docproc") built with .NET 8.0. The solu
 
 - `src/api/` - ASP.NET Core 8.0 Web API (currently contains a minimal "Hello World" endpoint)
 - `src/worker/` - Background worker service (not yet implemented)
-- `src/client/` - Client application (not yet implemented)
+- `src/client/receiver-app/` - Angular 20.3 client application
 - `src/common/` - Shared code library (not yet implemented)
 - `docs/` - Documentation (empty)
 - `infra/` - Infrastructure configuration (empty)
@@ -47,11 +47,38 @@ docker run -p 8080:8080 -p 8081:8081 docproc-api
 ### Testing
 
 ```bash
-# Run all tests (when test projects are added)
+# Run .NET tests (when test projects are added)
 dotnet test
 
-# Run tests with coverage
+# Run .NET tests with coverage
 dotnet test --collect:"XPlat Code Coverage"
+
+# Run Angular tests
+cd src/client/receiver-app
+npm test
+
+# Run Angular tests with coverage
+npm test -- --code-coverage
+```
+
+### Angular Client
+
+```bash
+# Install dependencies
+cd src/client/receiver-app
+npm install
+
+# Run development server (default: http://localhost:4200)
+npm start
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+
+# Build with watch mode
+npm run watch
 ```
 
 ## Architecture Notes
@@ -59,7 +86,8 @@ dotnet test --collect:"XPlat Code Coverage"
 - **Target Framework**: .NET 8.0 with nullable reference types enabled
 - **Docker**: Multi-stage build with separate base, build, publish, and final stages using Microsoft's official .NET images
 - **Launch Settings**: API configured to listen on ports 8080 (HTTP) and 8081 (HTTPS)
-- **Structure**: The solution currently has only the `api` project implemented; other services (worker, client, common) have placeholder directories
+- **Structure**: The solution includes a .NET API project and an Angular client application; worker and common services have placeholder directories
+- **Angular Client**: Built with Angular 20.3, uses SCSS for styling, configured with Karma/Jasmine for testing
 
 ## Configuration
 
