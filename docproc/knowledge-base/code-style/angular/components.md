@@ -45,10 +45,10 @@ Components should follow this order:
 
 ```typescript
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-card',
-  templateUrl: './user-card.component.html',
   styleUrl: './user-card.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  templateUrl: './user-card.component.html',
 })
 export class UserCardComponent {
   // Inputs
