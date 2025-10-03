@@ -22,9 +22,9 @@ public class BlobStorageService : IBlobStorageService
     {
         ValidateConfiguration();
 
-        var blobServiceClient = new BlobServiceClient(_options.ConnectionString);
-        var containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
-        var blobClient = containerClient.GetBlobClient(fileName);
+        BlobServiceClient blobServiceClient = new BlobServiceClient(_options.ConnectionString);
+        BlobContainerClient? containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
+        BlobClient? blobClient = containerClient.GetBlobClient(fileName);
 
         if (!blobClient.CanGenerateSasUri)
         {
@@ -32,7 +32,7 @@ public class BlobStorageService : IBlobStorageService
                 "Blob client cannot generate SAS URI. Ensure the connection string includes account key.");
         }
 
-        var sasBuilder = new BlobSasBuilder
+        BlobSasBuilder sasBuilder = new BlobSasBuilder
         {
             BlobContainerName = _options.ContainerName,
             BlobName = fileName,
@@ -42,9 +42,9 @@ public class BlobStorageService : IBlobStorageService
 
         sasBuilder.SetPermissions(BlobSasPermissions.Create | BlobSasPermissions.Write);
 
-        var sasUri = blobClient.GenerateSasUri(sasBuilder);
+        Uri? sasUri = blobClient.GenerateSasUri(sasBuilder);
 
-        var result = new SasUrlResult(
+        SasUrlResult result = new SasUrlResult(
             sasUri.ToString(),
             sasBuilder.ExpiresOn,
             fileName,

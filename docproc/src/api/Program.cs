@@ -2,7 +2,7 @@ using Api.Configuration;
 using Api.Endpoints;
 using Api.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Configure services
 builder.Services.Configure<AzureStorageOptions>(
@@ -14,7 +14,7 @@ builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure middleware
 if (app.Environment.IsDevelopment())
@@ -26,7 +26,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // Map endpoints
-app.MapGet("/", () => "Hello World!");
 app.MapUploadEndpoints();
 
 app.Run();

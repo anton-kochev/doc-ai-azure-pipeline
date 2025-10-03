@@ -14,7 +14,7 @@ public static class UploadEndpoints
     /// <param name="app">The web application.</param>
     public static void MapUploadEndpoints(this WebApplication app)
     {
-        var uploadGroup = app.MapGroup("/api/upload")
+        RouteGroupBuilder uploadGroup = app.MapGroup("/api/upload")
             .WithTags("Upload");
 
         uploadGroup.MapPost("/sas", GenerateSasUrlAsync)
@@ -36,7 +36,7 @@ public static class UploadEndpoints
     {
         try
         {
-            var result = await blobStorageService.GenerateSasUrlAsync(fileName, contentType);
+            SasUrlResult result = await blobStorageService.GenerateSasUrlAsync(fileName, contentType);
             return Results.Ok(result);
         }
         catch (InvalidOperationException ex)
