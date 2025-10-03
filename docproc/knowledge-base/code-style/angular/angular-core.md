@@ -47,9 +47,16 @@ appliesTo: ["**/*.ts", "**/*.html"]
 
 ## Dependency Injection
 
-- Use `inject()` function for modern DI (Angular 14+)
-- Constructor injection acceptable for backward compatibility
+- **MUST** use `inject()` function for dependency injection by default (Angular 14+)
+- Constructor injection should only be used for backward compatibility with older Angular versions
 - Services should be `providedIn: 'root'` unless scoped to a module
+- Example:
+  ```typescript
+  export class MyComponent {
+    private readonly myService = inject(MyService);
+    private readonly http = inject(HttpClient);
+  }
+  ```
 
 ## RxJS
 

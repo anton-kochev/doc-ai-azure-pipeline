@@ -1,29 +1,66 @@
 <div class="upload-container">
   <div
-    class="drop-zone"
-    [class.dragging]="isDragging()"
-    (dragover)="onDragOver($event)"
-    (dragleave)="onDragLeave($event)"
-    (drop)="onDrop($event)">
+      class="drop-zone"
+      [class.dragging]="isDragging()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+  >
     @if (!selectedFile()) {
-      <div class="drop-zone-content">
-        <p>Drag and drop a file here or</p>
-        <input
+    <div class="drop-zone-content">
+      <p>Drag and drop a file here or</p>
+      <input
           type="file"
           #fileInput
           class="file-input"
           (change)="onFileSelected($event)"
-          accept="*/*" />
-        <button mat-raised-button color="primary" (click)="fileInput.click()">
-          Choose File
-        </button>
-      </div>
+          accept="*/*"
+      />
+      <button
+          mat-raised-button
+          color="primary"
+          (click)="fileInput.click()"
+      >
+        Choose File
+      </button>
+    </div>
     } @else {
-      <div class="selected-file">
-        <p><strong>{{ selectedFile()!.name }}</strong></p>
-        <p>{{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB</p>
-        <button mat-raised-button color="warn" (click)="removeFile()">Remove</button>
+    <div class="selected-file">
+      <p><strong>{{ selectedFile()!.name }}</strong></p>
+      <p>{{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB</p>
+
+      @if (isUploading()) {
+      <mat-progress-bar
+          mode="determinate"
+          [value]="uploadProgress()"
+      ></mat-progress-bar>
+      <p>Uploading: {{ uploadProgress() }}%</p>
+      }
+
+      @if (uploadError()) {
+      <p class="error-message">{{ uploadError() }}</p>
+      }
+
+      @if (uploadSuccess()) {
+      <p class="success-message">File uploaded successfully!</p>
+      }
+
+      <div class="button-group">
+        @if (!isUploading() && !uploadSuccess()) {
+        <button
+            mat-raised-button
+            color="primary"
+            (click)="uploadFile()"
+        >Upload</button>
+        }
+        <button
+            mat-raised-button
+            color="warn"
+            (click)="removeFile()"
+            [disabled]="isUploading()"
+        >Remove</button>
       </div>
+    </div>
     }
   </div>
 </div>
