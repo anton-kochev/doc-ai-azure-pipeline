@@ -1,4 +1,5 @@
 using Api.Services;
+using Microsoft.AspNetCore.OpenApi;
 
 namespace Api.Endpoints;
 

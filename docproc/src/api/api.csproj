@@ -15,7 +15,8 @@
 
     <ItemGroup>
       <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
-      <PackageReference Include="Swashbuckle.AspNetCore" Version="6.10.2" />
+      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0" />
     </ItemGroup>
 
 </Project>
