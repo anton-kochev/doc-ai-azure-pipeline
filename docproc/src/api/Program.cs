@@ -10,6 +10,17 @@ builder.Services.Configure<AzureStorageOptions>(
 
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowClientApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 // Configure OpenAPI/Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -24,6 +35,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowClientApp");
 
 // Map endpoints
 app.MapUploadEndpoints();

@@ -70,9 +70,9 @@ export class UploadComponent {
 
     this.fileUploadService
       .getSasUrl(file.name)
-      .pipe(switchMap(response => this.fileUploadService.uploadFile(file, response.uploadUrl)))
+      .pipe(switchMap((response) => this.fileUploadService.uploadFile(file, response.sasUrl)))
       .subscribe({
-        next: event => {
+        next: (event) => {
           if (event.type === HttpEventType.UploadProgress) {
             const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
             this.uploadProgress.set(progress);
@@ -81,7 +81,7 @@ export class UploadComponent {
             this.isUploading.set(false);
           }
         },
-        error: error => {
+        error: (error) => {
           this.uploadError.set('Upload failed. Please try again.');
           this.isUploading.set(false);
           console.error('Upload error:', error);

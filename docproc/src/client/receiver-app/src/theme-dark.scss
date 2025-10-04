@@ -3,15 +3,17 @@
 // Dark theme configuration - applies when system prefers dark mode
 @media (prefers-color-scheme: dark) {
   html {
-    @include mat.theme((
-      color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
-        theme-type: dark,
-      ),
-      typography: Roboto,
-      density: 0,
-    ));
+    @include mat.theme(
+      (
+        color: (
+          primary: mat.$azure-palette,
+          tertiary: mat.$blue-palette,
+          theme-type: dark,
+        ),
+        typography: Roboto,
+        density: 0,
+      )
+    );
   }
 
   body {

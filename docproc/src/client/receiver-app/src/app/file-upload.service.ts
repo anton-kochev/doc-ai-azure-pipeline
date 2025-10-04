@@ -5,8 +5,8 @@ import { BaseHttpService } from './base-http.service';
 
 @Injectable({ providedIn: 'root' })
 export class FileUploadService extends BaseHttpService {
-  public getSasUrl(fileName: string): Observable<{ uploadUrl: string }> {
-    return this.post<{ uploadUrl: string }>(
+  public getSasUrl(fileName: string): Observable<{ sasUrl: string }> {
+    return this.post<{ sasUrl: string }>(
       `/api/upload/sas?fileName=${encodeURIComponent(fileName)}`,
       null,
     );
