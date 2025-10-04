@@ -2,6 +2,8 @@ import { HttpEventType } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { switchMap } from 'rxjs';
+
 import { FileUploadService } from '../file-upload.service';
 
 @Component({
@@ -66,31 +68,25 @@ export class UploadComponent {
     this.uploadSuccess.set(false);
     this.uploadProgress.set(0);
 
-    this.fileUploadService.getSasUrl(file.name).subscribe({
-      next: (response) => {
-        this.fileUploadService.uploadFile(file, response.uploadUrl).subscribe({
-          next: (event) => {
-            if (event.type === HttpEventType.UploadProgress) {
-              const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
-              this.uploadProgress.set(progress);
-            } else if (event.type === HttpEventType.Response) {
-              this.uploadSuccess.set(true);
-              this.isUploading.set(false);
-            }
-          },
-          error: (error) => {
-            this.uploadError.set('Upload failed. Please try again.');
+    this.fileUploadService
+      .getSasUrl(file.name)
+      .pipe(switchMap(response => this.fileUploadService.uploadFile(file, response.uploadUrl)))
+      .subscribe({
+        next: event => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
+            this.uploadProgress.set(progress);
+          } else if (event.type === HttpEventType.Response) {
+            this.uploadSuccess.set(true);
             this.isUploading.set(false);
-            console.error('Upload error:', error);
-          },
-        });
-      },
-      error: (error) => {
-        this.uploadError.set('Failed to get upload URL. Please try again.');
-        this.isUploading.set(false);
-        console.error('SAS URL error:', error);
-      },
-    });
+          }
+        },
+        error: error => {
+          this.uploadError.set('Upload failed. Please try again.');
+          this.isUploading.set(false);
+          console.error('Upload error:', error);
+        },
+      });
   }
 
   private resetUploadState(): void {
