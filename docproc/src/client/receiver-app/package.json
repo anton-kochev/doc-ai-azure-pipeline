@@ -9,7 +9,8 @@
     "test": "ng test",
     "lint": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,css,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,scss,css,json}\""
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,css,json}\"",
+    "generate-config": "bash scripts/generate-config.sh"
   },
   "prettier": {
     "printWidth": 100,

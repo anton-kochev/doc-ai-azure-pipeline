@@ -1,0 +1,14 @@
+{
+  "apiUrl": "http://localhost:5053",
+  "environment": "development",
+  "appName": "Document Processor Receiver",
+  "version": "1.0.0",
+  "features": {
+    "fileUpload": true,
+    "darkMode": true
+  },
+  "logging": {
+    "level": "info",
+    "enableConsole": true
+  }
+}

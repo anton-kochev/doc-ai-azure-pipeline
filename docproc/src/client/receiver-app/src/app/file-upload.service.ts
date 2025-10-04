@@ -1,14 +1,14 @@
-import { HttpClient, HttpEvent } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { HttpEvent } from '@angular/common/http';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { BaseHttpService } from './base-http.service';
 
 @Injectable({ providedIn: 'root' })
-export class FileUploadService {
-  private readonly http = inject(HttpClient);
-
+export class FileUploadService extends BaseHttpService {
   public getSasUrl(fileName: string): Observable<{ uploadUrl: string }> {
-    return this.http.get<{ uploadUrl: string }>(
-      `/api/upload/sas-url?fileName=${encodeURIComponent(fileName)}`,
+    return this.post<{ uploadUrl: string }>(
+      `/api/upload/sas?fileName=${encodeURIComponent(fileName)}`,
+      null,
     );
   }
 

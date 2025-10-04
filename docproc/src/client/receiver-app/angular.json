@@ -24,7 +24,8 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              }
+              },
+              "src/config.json"
             ],
             "styles": [
               "src/styles.scss"
@@ -78,7 +79,8 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              }
+              },
+              "src/config.json"
             ],
             "styles": [
               "src/styles.scss"
