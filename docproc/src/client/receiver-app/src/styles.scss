@@ -1,8 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 
 // Import Angular Material themes
-@import 'theme-light.scss';
-@import 'theme-dark.scss';
+@use 'theme-light.scss';
+@use 'theme-dark.scss';
 
 html,
 body {
