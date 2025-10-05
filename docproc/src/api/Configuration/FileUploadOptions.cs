@@ -11,7 +11,7 @@ public class FileUploadOptions
     public const string SectionName = "FileUpload";
 
     /// <summary>
-    /// List of allowed file extensions (e.g., ".pdf", ".docx").
+    /// List of allowed MIME types (e.g., "application/pdf", "image/jpeg").
     /// </summary>
     public string[] AllowedFileTypes { get; set; } = [];
 

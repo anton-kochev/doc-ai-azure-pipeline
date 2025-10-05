@@ -42,18 +42,23 @@ public static class UploadEndpoints
     {
         try
         {
-            // Validate file extension
+            // Map file extension to MIME type
             string fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
+            string? detectedMimeType = GetMimeTypeFromExtension(fileExtension);
+
+            // Use provided contentType or detected MIME type
+            string? mimeType = !string.IsNullOrEmpty(contentType) ? contentType : detectedMimeType;
+
             string[] allowedTypes = fileUploadOptions.Value.AllowedFileTypes
                 .Select(type => type.ToLowerInvariant())
                 .ToArray();
 
-            if (!allowedTypes.Contains(fileExtension))
+            if (string.IsNullOrEmpty(mimeType) || !allowedTypes.Contains(mimeType.ToLowerInvariant()))
             {
                 return Results.BadRequest(new
                 {
                     error = "Invalid file type",
-                    message = $"File type '{fileExtension}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
+                    message = $"File type '{mimeType ?? fileExtension}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
                 });
             }
 
@@ -77,12 +82,31 @@ public static class UploadEndpoints
                 });
             }
 
-            SasUrlResult result = await blobStorageService.GenerateSasUrlAsync(fileName, contentType);
+            SasUrlResult result = await blobStorageService.GenerateSasUrlAsync(fileName, mimeType);
             return Results.Ok(result);
         }
         catch (InvalidOperationException ex)
         {
             return Results.Problem(ex.Message, statusCode: StatusCodes.Status500InternalServerError);
         }
+    }
+
+    /// <summary>
+    /// Maps file extension to MIME type.
+    /// </summary>
+    /// <param name="extension">File extension including the dot (e.g., ".pdf").</param>
+    /// <returns>The corresponding MIME type, or null if not recognized.</returns>
+    private static string? GetMimeTypeFromExtension(string extension)
+    {
+        return extension switch
+        {
+            ".pdf" => "application/pdf",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".txt" => "text/plain",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => null
+        };
     }
 }
