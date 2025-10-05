@@ -8,6 +8,9 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<AzureStorageOptions>(
     builder.Configuration.GetSection(AzureStorageOptions.SectionName));
 
+builder.Services.Configure<FileUploadOptions>(
+    builder.Configuration.GetSection(FileUploadOptions.SectionName));
+
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
 // Configure CORS
