@@ -91,10 +91,17 @@ docproc/
 ├── tests/                      # Test projects
 ├── docs/                       # Documentation
 ├── infra/                      # Infrastructure as Code
-├── knowledge-base/             # Project knowledge base
-│   ├── core.md                # KB index
-│   ├── recipes/               # Code recipes
-│   └── CONTRIBUTING.md        # KB contribution guide
+├── knowledge-base/             # Project knowledge base (v1.1.0)
+│   ├── core.md                # KB index and versioning
+│   ├── README.md              # KB overview
+│   ├── CONTRIBUTING.md        # KB contribution guide
+│   ├── code-style/            # Style guides by framework
+│   │   ├── dotnet/            # C#/.NET guides
+│   │   ├── angular/           # Angular guides
+│   │   └── typescript/        # TypeScript guides
+│   ├── recipes/               # Reusable patterns
+│   ├── tools/                 # KB transformation tools
+│   └── tests/                 # KB validation
 ├── docproc.sln                # Solution file
 └── global.json                # .NET SDK version
 ```
@@ -214,12 +221,20 @@ The Angular app is configured with:
 
 ## Knowledge Base
 
-This project includes a knowledge base for best practices, recipes, and guidelines:
+This project includes a comprehensive knowledge base (v1.1.0) for code style guides, best practices, and reusable patterns:
 
-- **Location**: `knowledge-base/`
+- **Location**: `docproc/knowledge-base/`
 - **Index**: `knowledge-base/core.md`
+- **Overview**: `knowledge-base/README.md`
 - **Contributing**: See `knowledge-base/CONTRIBUTING.md`
-- **Recipes**: `knowledge-base/recipes/` (e.g., table-with-filters.md)
+
+### Included Content
+
+#### Code Style Guides
+- **.NET/C#**
+- **Angular**
+- **TypeScript**
+- **Recipes**
 
 ### Claude AI Integration
 
@@ -272,6 +287,7 @@ This will regenerate the Claude AI agent configuration and prompt artifacts.
 
 ## Recent Updates
 
+- ✅ Knowledge Base with comprehensive .NET/C# code style guides
 - ✅ Client-side file upload with Azure SAS-based uploads
 - ✅ Azure Blob Storage support with SAS URL generation
 - ✅ Material theming with light/dark themes
