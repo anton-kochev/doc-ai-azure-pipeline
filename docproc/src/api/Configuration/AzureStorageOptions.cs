@@ -11,9 +11,9 @@ public class AzureStorageOptions
     public const string SectionName = "AzureStorage";
 
     /// <summary>
-    /// Azure Storage connection string.
+    /// Azure Storage account name.
     /// </summary>
-    public string ConnectionString { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
 
     /// <summary>
     /// Default container name for uploads.
