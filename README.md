@@ -221,6 +221,44 @@ This project includes a knowledge base for best practices, recipes, and guidelin
 - **Contributing**: See `knowledge-base/CONTRIBUTING.md`
 - **Recipes**: `knowledge-base/recipes/` (e.g., table-with-filters.md)
 
+### Claude AI Integration
+
+The knowledge base is integrated with Claude Code for AI-assisted development:
+
+**CLAUDE.md** has a reference to the knowledge base
+
+**Generated prompt** at `knowledge-base/tools/adapters/claude/claude-agent-prompt.md`
+
+**npm run generate** command to regenerate when KB changes
+
+#### How to Use It
+
+When you need KB guidelines:
+
+```
+Follow the Angular guidelines from knowledge-base/tools/adapters/claude/claude-agent-prompt.md
+```
+
+or
+
+```
+Read the code style guides in knowledge-base/tools/adapters/claude/claude-agent-prompt.md
+and help me build a component
+```
+
+Claude Code will read the file only when requested, keeping token usage minimal.
+
+#### Regenerating the Knowledge Base
+
+Whenever you update the knowledge base content, run:
+
+```bash
+cd docproc/knowledge-base
+npm run generate
+```
+
+This will regenerate the Claude AI agent configuration and prompt artifacts.
+
 ## Contributing
 
 1. Follow the coding standards defined in the knowledge base
