@@ -138,3 +138,5 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 .claude/settings.local.json
+docproc/knowledge-base/tools/adapters/claude/claude-agent-prompt.md
+docproc/knowledge-base/tools/adapters/claude/claude-kb.json

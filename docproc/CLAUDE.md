@@ -93,3 +93,20 @@ npm run watch
 
 - `global.json` enforces .NET SDK 8.0.0 with `latestMinor` roll-forward policy
 - `appsettings.json` and `appsettings.Development.json` in the API project control logging and runtime behavior
+
+## Knowledge Base
+
+The project includes a knowledge base with code style guides and recipes. To regenerate the knowledge base prompt:
+
+```bash
+cd knowledge-base
+npm run generate
+```
+
+This generates:
+- `tools/adapters/claude/claude-kb.json` - JSON configuration
+- `tools/adapters/claude/claude-agent-prompt.md` - Formatted prompt for Claude
+
+### Included Guidelines
+
+The knowledge base includes the following code style guides and best practices that should be followed when working on this project. See `knowledge-base/tools/adapters/claude/claude-agent-prompt.md` for the full generated content.
