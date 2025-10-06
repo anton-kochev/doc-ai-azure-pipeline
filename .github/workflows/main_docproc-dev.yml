@@ -35,7 +35,6 @@ jobs:
       
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v4
-        v1
         id: fa
         with:
           app-name: 'docproc-dev'
