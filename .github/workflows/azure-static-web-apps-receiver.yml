@@ -31,6 +31,15 @@ jobs:
         with:
           submodules: true
           lfs: false
+      - name: Generate config.json
+        env:
+          API_URL: ${{ secrets.RECEIVER_API_URL }}
+          APP_ENV: production
+          LOG_LEVEL: info
+          ENABLE_CONSOLE_LOGGING: true
+        run: |
+          cd docproc/src/client/receiver-app
+          bash scripts/generate-config.sh
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
