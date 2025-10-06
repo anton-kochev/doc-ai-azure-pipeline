@@ -39,7 +39,7 @@ jobs:
           ENABLE_CONSOLE_LOGGING: true
         run: |
           cd docproc/src/client/receiver-app
-          bash scripts/generate-config.sh
+          bash scripts/generate-config.sh src
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
