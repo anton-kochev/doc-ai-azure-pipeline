@@ -24,7 +24,7 @@ public class BlobStorageService : IBlobStorageService
         ValidateConfiguration();
 
         // Use Azure AD authentication instead of connection string
-        Uri blobServiceUri = new ($"https://{_options.AccountName}.blob.core.windows.net");
+        Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
         BlobServiceClient blobServiceClient = new(blobServiceUri, new DefaultAzureCredential());
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
         BlobClient blobClient = containerClient.GetBlobClient(fileName);

@@ -1,47 +1,34 @@
 using Api.Configuration;
-using Api.Endpoints;
 using Api.Services;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-// Configure services
-builder.Services.Configure<AzureStorageOptions>(
-    builder.Configuration.GetSection(AzureStorageOptions.SectionName));
-
-builder.Services.Configure<FileUploadOptions>(
-    builder.Configuration.GetSection(FileUploadOptions.SectionName));
-
-builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
-
-// Configure CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowClientApp", policy =>
+IHost host = new HostBuilder()
+    .ConfigureFunctionsWebApplication()
+    .ConfigureAppConfiguration((context, config) =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+        config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+              .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+              .AddEnvironmentVariables();
+    })
+    .ConfigureServices((context, services) =>
+    {
+        // Configure Application Insights
+        services.AddApplicationInsightsTelemetryWorkerService();
+        services.ConfigureFunctionsApplicationInsights();
 
-// Configure OpenAPI/Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+        // Configure custom options
+        services.Configure<AzureStorageOptions>(
+            context.Configuration.GetSection(AzureStorageOptions.SectionName));
 
-WebApplication app = builder.Build();
+        services.Configure<FileUploadOptions>(
+            context.Configuration.GetSection(FileUploadOptions.SectionName));
 
-// Configure middleware
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+        // Register services
+        services.AddScoped<IBlobStorageService, BlobStorageService>();
+    })
+    .Build();
 
-app.UseHttpsRedirection();
-
-app.UseCors("AllowClientApp");
-
-// Map endpoints
-app.MapUploadEndpoints();
-
-app.Run();
+host.Run();
