@@ -33,7 +33,7 @@ jobs:
           lfs: false
       - name: Generate config.json
         env:
-          API_URL: ${{ secrets.RECEIVER_API_URL }}
+          API_URL: ${{ secrets.API_URL }}
           APP_ENV: production
           LOG_LEVEL: info
           ENABLE_CONSOLE_LOGGING: true
