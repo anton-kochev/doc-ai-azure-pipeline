@@ -32,7 +32,13 @@ jobs:
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
           dotnet build --configuration Release --output ./output
           popd
-      
+
+      - name: 'Verify output folder'  # ADD THIS
+        run: |
+          ls -la ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output
+          echo "Contents of output folder:"
+          find ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output -type f
+          
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
         id: fa
