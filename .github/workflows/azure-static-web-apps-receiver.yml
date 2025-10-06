@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
   APP_LOCATION: '/docproc/src/client/receiver-app'
   OUTPUT_LOCATION: 'dist/receiver-app/browser'
 
