@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Api.Configuration;
 using Api.Services;
 using Microsoft.Azure.Functions.Worker;
@@ -18,6 +20,13 @@ IHost host = new HostBuilder()
         // Configure Application Insights
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
+
+        // Configure JSON serialization with camelCase naming policy
+        services.Configure<JsonSerializerOptions>(options =>
+        {
+            options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        });
 
         // Configure custom options
         services.Configure<AzureStorageOptions>(

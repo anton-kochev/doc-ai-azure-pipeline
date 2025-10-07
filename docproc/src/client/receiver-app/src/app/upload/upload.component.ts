@@ -69,7 +69,7 @@ export class UploadComponent {
     this.uploadProgress.set(0);
 
     this.fileUploadService
-      .getSasUrl(file.name)
+      .getSasUrl(file.name, file.size, file.type)
       .pipe(switchMap((response) => this.fileUploadService.uploadFile(file, response.sasUrl)))
       .subscribe({
         next: (event) => {

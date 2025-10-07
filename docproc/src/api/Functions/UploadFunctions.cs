@@ -43,19 +43,34 @@ public class UploadFunctions
         {
             // Parse request body
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var data = JsonSerializer.Deserialize<SasUrlRequest>(requestBody, new JsonSerializerOptions
+
+            if (string.IsNullOrWhiteSpace(requestBody))
+            {
+                _logger.LogWarning("Request body is empty");
+                HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                badRequestResponse.Headers.Add("Content-Type", "application/json");
+                await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
+                {
+                    error = "Invalid request",
+                    message = "Request body is required"
+                }));
+                return badRequestResponse;
+            }
+
+            SasUrlRequest? data = JsonSerializer.Deserialize<SasUrlRequest>(requestBody, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
             if (data == null || string.IsNullOrEmpty(data.FileName))
             {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteAsJsonAsync(new
+                HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                badRequestResponse.Headers.Add("Content-Type", "application/json");
+                await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid request",
                     message = "fileName is required"
-                });
+                }));
                 return badRequestResponse;
             }
 
@@ -72,12 +87,13 @@ public class UploadFunctions
 
             if (string.IsNullOrEmpty(mimeType) || !allowedTypes.Contains(mimeType.ToLowerInvariant()))
             {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteAsJsonAsync(new
+                HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                badRequestResponse.Headers.Add("Content-Type", "application/json");
+                await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file type",
                     message = $"File type '{mimeType ?? fileExtension}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
-                });
+                }));
                 return badRequestResponse;
             }
 
@@ -85,52 +101,68 @@ public class UploadFunctions
             long maxFileSizeBytes = _fileUploadOptions.MaxFileSizeMB * 1024 * 1024;
             if (data.FileSizeBytes > maxFileSizeBytes)
             {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteAsJsonAsync(new
+                HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                badRequestResponse.Headers.Add("Content-Type", "application/json");
+                await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "File too large",
                     message = $"File size {data.FileSizeBytes / 1024.0 / 1024.0:F2} MB exceeds the maximum allowed size of {_fileUploadOptions.MaxFileSizeMB} MB"
-                });
+                }));
                 return badRequestResponse;
             }
 
             if (data.FileSizeBytes <= 0)
             {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteAsJsonAsync(new
+                HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                badRequestResponse.Headers.Add("Content-Type", "application/json");
+                await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file size",
                     message = "File size must be greater than 0"
-                });
+                }));
                 return badRequestResponse;
             }
 
             SasUrlResult result = await _blobStorageService.GenerateSasUrlAsync(data.FileName, mimeType);
 
-            var response = req.CreateResponse(HttpStatusCode.OK);
+            HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(result);
             return response;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON in request body");
+            var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            errorResponse.Headers.Add("Content-Type", "application/json");
+            await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
+            {
+                error = "Invalid request",
+                message = "Request body must be valid JSON"
+            }));
+            return errorResponse;
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Configuration error while generating SAS URL");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteAsJsonAsync(new
+            errorResponse.Headers.Add("Content-Type", "application/json");
+            await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
             {
                 error = "Internal server error",
                 message = ex.Message
-            });
+            }));
             return errorResponse;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while generating SAS URL");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteAsJsonAsync(new
+            errorResponse.Headers.Add("Content-Type", "application/json");
+            await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
             {
                 error = "Internal server error",
                 message = "An unexpected error occurred"
-            });
+            }));
             return errorResponse;
         }
     }
