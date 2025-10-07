@@ -76,23 +76,19 @@ public class UploadFunctions
 
             // Map file extension to MIME type
             string fileExtension = Path.GetExtension(data.FileName).ToLowerInvariant();
-            string? detectedMimeType = GetMimeTypeFromExtension(fileExtension);
-
-            // Use provided contentType or detected MIME type
-            string? mimeType = !string.IsNullOrEmpty(data.ContentType) ? data.ContentType : detectedMimeType;
 
             string[] allowedTypes = _fileUploadOptions.AllowedFileTypes
                 .Select(type => type.ToLowerInvariant())
                 .ToArray();
 
-            if (string.IsNullOrEmpty(mimeType) || !allowedTypes.Contains(mimeType.ToLowerInvariant()))
+            if (string.IsNullOrEmpty(data.ContentType) || !allowedTypes.Contains(data.ContentType.ToLowerInvariant()))
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file type",
-                    message = $"File type '{mimeType ?? fileExtension}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
+                    message = $"File type '{data.ContentType ?? fileExtension}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
                 }));
                 return badRequestResponse;
             }
@@ -123,7 +119,7 @@ public class UploadFunctions
                 return badRequestResponse;
             }
 
-            SasUrlResult result = await _blobStorageService.GenerateSasUrlAsync(data.FileName, mimeType);
+            SasUrlResult result = await _blobStorageService.GenerateSasUrlAsync(data.FileName, data.ContentType);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(result);
@@ -156,7 +152,7 @@ public class UploadFunctions
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while generating SAS URL");
-            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            HttpResponseData errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             errorResponse.Headers.Add("Content-Type", "application/json");
             await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
             {
@@ -165,25 +161,6 @@ public class UploadFunctions
             }));
             return errorResponse;
         }
-    }
-
-    /// <summary>
-    /// Maps file extension to MIME type.
-    /// </summary>
-    /// <param name="extension">File extension including the dot (e.g., ".pdf").</param>
-    /// <returns>The corresponding MIME type, or null if not recognized.</returns>
-    private static string? GetMimeTypeFromExtension(string extension)
-    {
-        return extension switch
-        {
-            ".pdf" => "application/pdf",
-            ".doc" => "application/msword",
-            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ".txt" => "text/plain",
-            ".png" => "image/png",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            _ => null
-        };
     }
 }
 

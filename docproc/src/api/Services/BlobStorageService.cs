@@ -44,7 +44,12 @@ public class BlobStorageService : IBlobStorageService
             ExpiresOn = expiresOn
         };
 
-        sasBuilder.SetPermissions(BlobSasPermissions.Create | BlobSasPermissions.Write);
+        sasBuilder.SetPermissions(
+            BlobSasPermissions.Read |
+            BlobSasPermissions.Write |
+            BlobSasPermissions.Create |
+            BlobSasPermissions.Add
+        );
 
         // Generate user delegation SAS
         BlobSasQueryParameters sasQueryParameters = sasBuilder.ToSasQueryParameters(
