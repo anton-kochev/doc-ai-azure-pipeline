@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api.Data;
 
@@ -11,9 +12,11 @@ using api.Data;
 namespace api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class DocProcDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251008135351_AddProcessJobsEntity")]
+    partial class AddProcessJobsEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -167,7 +170,7 @@ namespace api.Migrations
 
                     b.HasIndex(new[] { "DocumentId" }, "IX_ProcessJobs_DocumentId");
 
-                    b.HasIndex(new[] { "DocumentId", "IdempotencyKey" }, "IX_ProcessJobs_DocumentId_IdempotencyKey")
+                    b.HasIndex(new[] { "IdempotencyKey" }, "IX_ProcessJobs_IdempotencyKey")
                         .IsUnique();
 
                     b.HasIndex(new[] { "Status", "Priority" }, "IX_ProcessJobs_Status_Priority");

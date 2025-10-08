@@ -6,6 +6,7 @@ namespace api.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Document> Documents { get; set; }
+    public DbSet<ProcessJob> ProcessJobs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasConversion(
                     v => v.ToString(),
                     v => (DocumentStatus)Enum.Parse(typeof(DocumentStatus), v));
+        });
+
+        modelBuilder.Entity<ProcessJob>(entity =>
+        {
+            entity.HasKey(e => e.JobId);
+            entity.Property(e => e.JobId)
+                .IsRequired();
+
+            // Foreign key with cascade delete
+            entity.HasOne(e => e.Document)
+                .WithMany()
+                .HasForeignKey(e => e.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .HasConversion(
+                    v => v.ToString(),
+                    v => (ProcessJobStatus)Enum.Parse(typeof(ProcessJobStatus), v));
+
+            entity.Property(e => e.Stage)
+                .HasConversion(
+                    v => v.ToString(),
+                    v => (ProcessJobStage)Enum.Parse(typeof(ProcessJobStage), v));
         });
     }
 }
