@@ -39,7 +39,12 @@ IHost host = new HostBuilder()
 
         // Register DbContext
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(context.Configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlServer(
+                context.Configuration.GetConnectionString("DefaultConnection"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null)));
 
         // Register services
         services.AddScoped<IBlobStorageService, BlobStorageService>();
