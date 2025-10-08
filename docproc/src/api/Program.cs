@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using api.Data;
 using Api.Configuration;
 using Api.Services;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -34,6 +36,10 @@ IHost host = new HostBuilder()
 
         services.Configure<FileUploadOptions>(
             context.Configuration.GetSection(FileUploadOptions.SectionName));
+
+        // Register DbContext
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(context.Configuration.GetConnectionString("DefaultConnection")));
 
         // Register services
         services.AddScoped<IBlobStorageService, BlobStorageService>();
