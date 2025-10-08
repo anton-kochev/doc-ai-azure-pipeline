@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release
+          dotnet build --configuration Release --output ./output
           popd
 
       - name: "Login to Azure"
@@ -57,5 +57,5 @@ jobs:
           CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet ef database update --no-build --connection "$CONNECTION_STRING"
+          dotnet ef database update --no-build --project . --output-dir ./output --connection "$CONNECTION_STRING"
           popd
