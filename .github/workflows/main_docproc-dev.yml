@@ -45,3 +45,15 @@ jobs:
           app-name: 'docproc-dev'
           slot-name: 'Production'
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+
+      - name: 'Install EF Core Tools'
+        shell: bash
+        run: |
+          dotnet tool install --global dotnet-ef --version 9.0.9
+
+      - name: 'Apply Database Migrations'
+        shell: bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet ef database update --connection "${{ secrets.DB_CONNECTION_STRING }}"
+          popd
