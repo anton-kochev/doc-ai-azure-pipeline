@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 IHost host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
@@ -50,5 +51,29 @@ IHost host = new HostBuilder()
         services.AddScoped<IBlobStorageService, BlobStorageService>();
     })
     .Build();
+
+// Apply database migrations at startup (if enabled)
+bool applyMigrationsOnStartup = host.Services
+    .GetRequiredService<IConfiguration>()
+    .GetValue("Database:ApplyMigrationsOnStartup", false);
+
+if (applyMigrationsOnStartup)
+{
+    using IServiceScope scope = host.Services.CreateScope();
+    AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    ILogger<Program> logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+        dbContext.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying database migrations");
+        throw;
+    }
+}
 
 host.Run();
