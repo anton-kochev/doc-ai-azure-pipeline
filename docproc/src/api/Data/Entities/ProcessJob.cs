@@ -8,7 +8,7 @@ namespace api.Data.Entities;
 [Index(nameof(DocumentId), Name = "IX_ProcessJobs_DocumentId")]
 [Index(nameof(Status), nameof(Priority), Name = "IX_ProcessJobs_Status_Priority")]
 [Index(nameof(CorrelationId), Name = "IX_ProcessJobs_CorrelationId")]
-public class ProcessJob
+public sealed class ProcessJob
 {
     [Key]
     public Guid JobId { get; set; }

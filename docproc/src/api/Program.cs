@@ -49,6 +49,7 @@ IHost host = new HostBuilder()
 
         // Register services
         services.AddScoped<IBlobStorageService, BlobStorageService>();
+        services.AddScoped<IDocumentService, DocumentService>();
     })
     .Build();
 

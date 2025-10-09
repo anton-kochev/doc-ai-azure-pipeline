@@ -34,10 +34,11 @@ public sealed class BlobStorageService : IBlobStorageService
             : null;
 
         // Upload the blob
-        await blobClient.UploadAsync(fileStream, new Azure.Storage.Blobs.Models.BlobUploadOptions
-        {
-            HttpHeaders = headers
-        });
+        Azure.Response<Azure.Storage.Blobs.Models.BlobContentInfo> uploadResponse =
+            await blobClient.UploadAsync(fileStream, new Azure.Storage.Blobs.Models.BlobUploadOptions
+            {
+                HttpHeaders = headers
+            });
 
         // Get the blob properties to retrieve the size
         Azure.Storage.Blobs.Models.BlobProperties properties = await blobClient.GetPropertiesAsync();
@@ -46,7 +47,10 @@ public sealed class BlobStorageService : IBlobStorageService
             blobClient.Uri.ToString(),
             fileName,
             contentType,
-            properties.ContentLength
+            properties.ContentLength,
+            uploadResponse.Value.ETag.ToString(),
+            _options.ContainerName,
+            fileName
         );
 
         return result;

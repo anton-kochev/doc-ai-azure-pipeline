@@ -1,3 +1,5 @@
+using api.Data;
+using api.Data.Entities;
 using Api.Configuration;
 using Api.Services;
 using Microsoft.Azure.Functions.Worker;
@@ -5,6 +7,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Net.Http.Headers;
 
@@ -13,19 +16,22 @@ namespace Api.Functions;
 /// <summary>
 /// Azure Functions for upload-related operations.
 /// </summary>
-public class UploadFunctions
+public sealed class UploadFunctions
 {
     private readonly ILogger<UploadFunctions> _logger;
     private readonly IBlobStorageService _blobStorageService;
+    private readonly IDocumentService _documentService;
     private readonly FileUploadOptions _fileUploadOptions;
 
     public UploadFunctions(
         ILogger<UploadFunctions> logger,
         IBlobStorageService blobStorageService,
+        IDocumentService documentService,
         IOptions<FileUploadOptions> fileUploadOptions)
     {
         _logger = logger;
         _blobStorageService = blobStorageService;
+        _documentService = documentService;
         _fileUploadOptions = fileUploadOptions.Value;
     }
 
@@ -137,6 +143,14 @@ public class UploadFunctions
                 return badRequestResponse;
             }
 
+            // Calculate SHA256 hash
+            byte[] sha256Hash;
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                sha256Hash = sha256.ComputeHash(fileData.Data);
+                fileData.Data.Position = 0; // Reset stream position for upload
+            }
+
             // Upload to Blob Storage using Managed Identity
             BlobUploadResult result = await _blobStorageService.UploadBlobAsync(
                 fileData.FileName,
@@ -145,8 +159,29 @@ public class UploadFunctions
 
             _logger.LogInformation("File uploaded successfully: {FileName}, Size: {Size} bytes", result.FileName, result.FileSizeBytes);
 
+            // Create Document record in database
+            Guid documentId = await _documentService.CreateDocumentAsync(
+                fileName: result.FileName,
+                contentType: result.ContentType ?? "application/octet-stream",
+                sizeBytes: result.FileSizeBytes,
+                blobContainer: result.ContainerName,
+                blobPath: result.BlobPath,
+                blobETag: result.ETag,
+                sha256Hash: sha256Hash,
+                uploadedBy: "system" // TODO: Replace with actual user identity
+            );
+
+            _logger.LogInformation("Document record created: {DocumentId}", documentId);
+
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(result);
+            await response.WriteAsJsonAsync(new
+            {
+                documentId,
+                blobUrl = result.BlobUrl,
+                fileName = result.FileName,
+                contentType = result.ContentType,
+                fileSizeBytes = result.FileSizeBytes
+            });
             return response;
         }
         catch (InvalidOperationException ex)
@@ -177,18 +212,9 @@ public class UploadFunctions
 }
 
 /// <summary>
-/// Request model for SAS URL generation.
-/// </summary>
-public record SasUrlRequest(
-    string FileName,
-    long FileSizeBytes,
-    string? ContentType
-);
-
-/// <summary>
 /// Multipart form data parser for extracting file from HTTP request.
 /// </summary>
-internal class MultipartFormDataParser
+internal sealed class MultipartFormDataParser
 {
     private readonly Stream _stream;
     private readonly string _boundary;

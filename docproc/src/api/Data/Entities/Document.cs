@@ -6,7 +6,7 @@ namespace api.Data.Entities;
 
 [Index(nameof(TenantId), nameof(Status), Name = "IX_Documents_Tenant_Status")]
 [Index(nameof(BlobContainer), nameof(BlobPath), Name = "IX_Documents_Blob")]
-public class Document
+public sealed class Document
 {
     [Key]
     public Guid DocumentId { get; set; }

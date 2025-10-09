@@ -32,5 +32,8 @@ public record BlobUploadResult(
     string BlobUrl,
     string FileName,
     string? ContentType,
-    long FileSizeBytes
+    long FileSizeBytes,
+    string ETag,
+    string ContainerName,
+    string BlobPath
 );
