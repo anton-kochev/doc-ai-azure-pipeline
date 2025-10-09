@@ -41,7 +41,7 @@ IHost host = new HostBuilder()
         // Register DbContext
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(
-                context.Configuration.GetConnectionString("AzureSql"),
+                context.Configuration.GetConnectionString("SQLAZURECONNSTR_DefaultConnection"),
                 sqlOptions => sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 5,
                     maxRetryDelay: TimeSpan.FromSeconds(10),
