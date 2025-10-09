@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<Document> Documents { get; set; }
     public DbSet<ProcessJob> ProcessJobs { get; set; }
+    public DbSet<ProfileCatalog> ProfileCatalogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +53,32 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasConversion(
                     v => v.ToString(),
                     v => (ProcessJobStage)Enum.Parse(typeof(ProcessJobStage), v));
+        });
+
+        modelBuilder.Entity<ProfileCatalog>(entity =>
+        {
+            // Composite primary key
+            entity.HasKey(e => new { e.ProfileName, e.Version });
+
+            entity.Property(e => e.ProfileName)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            entity.Property(e => e.Version)
+                .IsRequired()
+                .HasMaxLength(32);
+
+            // Unique filtered index: at most one Active default per profileName
+            entity.HasIndex(e => new { e.ProfileName, e.IsDefault })
+                .IsUnique()
+                .HasFilter("[Status] = 'Active' AND [IsDefault] = 1")
+                .HasDatabaseName("IX_ProfileCatalog_ProfileName_IsDefault_Unique");
+
+            // Enum conversion for Status
+            entity.Property(e => e.Status)
+                .HasConversion(
+                    v => v.ToString(),
+                    v => (ProfileStatus)Enum.Parse(typeof(ProfileStatus), v));
         });
     }
 }

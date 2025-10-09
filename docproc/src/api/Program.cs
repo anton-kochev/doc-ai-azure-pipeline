@@ -61,7 +61,7 @@ bool applyMigrationsOnStartup = host.Services
 if (applyMigrationsOnStartup)
 {
     using IServiceScope scope = host.Services.CreateScope();
-    
+
     AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     ILogger<Program> logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     IEnumerable<string> pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();

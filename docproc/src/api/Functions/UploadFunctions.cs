@@ -159,8 +159,8 @@ public sealed class UploadFunctions
 
             _logger.LogInformation("File uploaded successfully: {FileName}, Size: {Size} bytes", result.FileName, result.FileSizeBytes);
 
-            // Create Document record in database
-            Guid documentId = await _documentService.CreateDocumentAsync(
+            // Get existing or create new Document record in database
+            (Guid documentId, bool isNew) = await _documentService.GetOrCreateDocumentAsync(
                 fileName: result.FileName,
                 contentType: result.ContentType ?? "application/octet-stream",
                 sizeBytes: result.FileSizeBytes,
@@ -171,12 +171,20 @@ public sealed class UploadFunctions
                 uploadedBy: "system" // TODO: Replace with actual user identity
             );
 
-            _logger.LogInformation("Document record created: {DocumentId}", documentId);
+            if (isNew)
+            {
+                _logger.LogInformation("Document record created: {DocumentId}", documentId);
+            }
+            else
+            {
+                _logger.LogInformation("Document already exists, returning existing record: {DocumentId}", documentId);
+            }
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
             {
                 documentId,
+                isNew,
                 blobUrl = result.BlobUrl,
                 fileName = result.FileName,
                 contentType = result.ContentType,

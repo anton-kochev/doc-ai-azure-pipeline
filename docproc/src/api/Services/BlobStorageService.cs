@@ -50,8 +50,7 @@ public sealed class BlobStorageService : IBlobStorageService
             properties.ContentLength,
             uploadResponse.Value.ETag.ToString(),
             _options.ContainerName,
-            fileName
-        );
+            fileName);
 
         return result;
     }
