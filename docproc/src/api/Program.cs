@@ -41,7 +41,7 @@ IHost host = new HostBuilder()
         // Register DbContext
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(
-                context.Configuration.GetConnectionString("SQLAZURECONNSTR_DefaultConnection"),
+                context.Configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions => sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 5,
                     maxRetryDelay: TimeSpan.FromSeconds(10),
@@ -60,19 +60,28 @@ bool applyMigrationsOnStartup = host.Services
 if (applyMigrationsOnStartup)
 {
     using IServiceScope scope = host.Services.CreateScope();
+    
     AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     ILogger<Program> logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    IEnumerable<string> pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
 
-    try
+    if (pendingMigrations.Any())
     {
-        logger.LogInformation("Applying database migrations...");
-        dbContext.Database.Migrate();
-        logger.LogInformation("Database migrations applied successfully");
+        try
+        {
+            logger.LogInformation("Applying database migrations...");
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while applying database migrations");
+            throw;
+        }
     }
-    catch (Exception ex)
+    else
     {
-        logger.LogError(ex, "An error occurred while applying database migrations");
-        throw;
+        logger.LogInformation("Database is up to date. No migrations to apply.");
     }
 }
 
