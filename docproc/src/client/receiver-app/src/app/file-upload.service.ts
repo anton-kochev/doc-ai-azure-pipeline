@@ -3,24 +3,26 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseHttpService } from './base-http.service';
 
+export interface BlobUploadResult {
+  blobUrl: string;
+  fileName: string;
+  contentType?: string;
+  fileSizeBytes: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FileUploadService extends BaseHttpService {
-  public getSasUrl(fileName: string, fileSizeBytes: number, contentType?: string): Observable<{ sasUrl: string }> {
-    return this.post<{ sasUrl: string }>(
-      `/api/upload/sas`,
-      { fileName, fileSizeBytes, contentType },
-    );
-  }
+  /**
+   * Uploads a file to the server, which then uploads it to Azure Blob Storage.
+   * The server uses Managed Identity for secure access to storage.
+   */
+  public uploadFile(file: File): Observable<HttpEvent<BlobUploadResult>> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
 
-  public uploadFile(file: File, sasUrl: string): Observable<HttpEvent<string>> {
-    return this.http.put(sasUrl, file, {
-      headers: {
-        'x-ms-blob-type': 'BlockBlob', // Required for Azure Blob
-        'Content-Type': file.type ?? 'application/octet-stream',
-      },
+    return this.post<HttpEvent<BlobUploadResult>>(`/api/upload`, formData, {
       reportProgress: true,
       observe: 'events',
-      responseType: 'text',
     });
   }
 }

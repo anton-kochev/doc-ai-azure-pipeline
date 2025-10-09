@@ -1,7 +1,6 @@
 using Api.Configuration;
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Azure.Storage.Sas;
 using Microsoft.Extensions.Options;
 
 namespace Api.Services;
@@ -9,7 +8,7 @@ namespace Api.Services;
 /// <summary>
 /// Implementation of Azure Blob Storage operations.
 /// </summary>
-public class BlobStorageService : IBlobStorageService
+public sealed class BlobStorageService : IBlobStorageService
 {
     private readonly AzureStorageOptions _options;
 
@@ -19,53 +18,35 @@ public class BlobStorageService : IBlobStorageService
     }
 
     /// <inheritdoc />
-    public async Task<SasUrlResult> GenerateSasUrlAsync(string fileName, string? contentType = null)
+    public async Task<BlobUploadResult> UploadBlobAsync(string fileName, Stream fileStream, string? contentType = null)
     {
         ValidateConfiguration();
 
-        // Use Azure AD authentication instead of connection string
+        // Use Azure AD authentication (Managed Identity or DefaultAzureCredential)
         Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
         BlobServiceClient blobServiceClient = new(blobServiceUri, new DefaultAzureCredential());
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
         BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
-        // Get user delegation key for generating user delegation SAS
-        DateTimeOffset expiresOn = DateTimeOffset.UtcNow.AddHours(_options.SasExpirationHours);
-        Azure.Storage.Blobs.Models.UserDelegationKey userDelegationKey =
-            await blobServiceClient.GetUserDelegationKeyAsync(
-                startsOn: DateTimeOffset.UtcNow.AddMinutes(-5),
-                expiresOn: expiresOn);
+        // Set content type if provided
+        Azure.Storage.Blobs.Models.BlobHttpHeaders? headers = contentType != null
+            ? new Azure.Storage.Blobs.Models.BlobHttpHeaders { ContentType = contentType }
+            : null;
 
-        BlobSasBuilder sasBuilder = new()
+        // Upload the blob
+        await blobClient.UploadAsync(fileStream, new Azure.Storage.Blobs.Models.BlobUploadOptions
         {
-            BlobContainerName = _options.ContainerName,
-            BlobName = fileName,
-            Resource = "b",
-            ExpiresOn = expiresOn
-        };
+            HttpHeaders = headers
+        });
 
-        sasBuilder.SetPermissions(
-            BlobSasPermissions.Read |
-            BlobSasPermissions.Write |
-            BlobSasPermissions.Create |
-            BlobSasPermissions.Add
-        );
+        // Get the blob properties to retrieve the size
+        Azure.Storage.Blobs.Models.BlobProperties properties = await blobClient.GetPropertiesAsync();
 
-        // Generate user delegation SAS
-        BlobSasQueryParameters sasQueryParameters = sasBuilder.ToSasQueryParameters(
-            userDelegationKey,
-            _options.AccountName);
-
-        UriBuilder sasUriBuilder = new(blobClient.Uri)
-        {
-            Query = sasQueryParameters.ToString()
-        };
-
-        SasUrlResult result = new(
-            sasUriBuilder.Uri.ToString(),
-            sasBuilder.ExpiresOn,
+        BlobUploadResult result = new(
+            blobClient.Uri.ToString(),
             fileName,
-            contentType
+            contentType,
+            properties.ContentLength
         );
 
         return result;

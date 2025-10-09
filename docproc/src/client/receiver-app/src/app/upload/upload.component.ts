@@ -2,7 +2,6 @@ import { HttpEventType } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { switchMap } from 'rxjs';
 
 import { FileUploadService } from '../file-upload.service';
 
@@ -68,25 +67,23 @@ export class UploadComponent {
     this.uploadSuccess.set(false);
     this.uploadProgress.set(0);
 
-    this.fileUploadService
-      .getSasUrl(file.name, file.size, file.type)
-      .pipe(switchMap((response) => this.fileUploadService.uploadFile(file, response.sasUrl)))
-      .subscribe({
-        next: (event) => {
-          if (event.type === HttpEventType.UploadProgress) {
-            const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
-            this.uploadProgress.set(progress);
-          } else if (event.type === HttpEventType.Response) {
-            this.uploadSuccess.set(true);
-            this.isUploading.set(false);
-          }
-        },
-        error: (error) => {
-          this.uploadError.set('Upload failed. Please try again.');
+    this.fileUploadService.uploadFile(file).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
+          this.uploadProgress.set(progress);
+        } else if (event.type === HttpEventType.Response) {
+          this.uploadSuccess.set(true);
           this.isUploading.set(false);
-          console.error('Upload error:', error);
-        },
-      });
+          console.log('Upload successful:', event.body);
+        }
+      },
+      error: (error) => {
+        this.uploadError.set('Upload failed. Please try again.');
+        this.isUploading.set(false);
+        console.error('Upload error:', error);
+      },
+    });
   }
 
   private resetUploadState(): void {

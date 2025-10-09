@@ -6,12 +6,13 @@ namespace Api.Services;
 public interface IBlobStorageService
 {
     /// <summary>
-    /// Generates a SAS URL for uploading a blob.
+    /// Uploads a blob directly to Azure Blob Storage using Managed Identity.
     /// </summary>
     /// <param name="fileName">The name of the file to upload.</param>
+    /// <param name="fileStream">The file stream to upload.</param>
     /// <param name="contentType">Optional content type of the file.</param>
-    /// <returns>Result containing the SAS URL and metadata.</returns>
-    Task<SasUrlResult> GenerateSasUrlAsync(string fileName, string? contentType = null);
+    /// <returns>Result containing the blob URL and metadata.</returns>
+    Task<BlobUploadResult> UploadBlobAsync(string fileName, Stream fileStream, string? contentType = null);
 }
 
 /// <summary>
@@ -22,4 +23,14 @@ public record SasUrlResult(
     DateTimeOffset ExpiresOn,
     string FileName,
     string? ContentType
+);
+
+/// <summary>
+/// Result of blob upload.
+/// </summary>
+public record BlobUploadResult(
+    string BlobUrl,
+    string FileName,
+    string? ContentType,
+    long FileSizeBytes
 );
