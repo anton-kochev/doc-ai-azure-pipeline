@@ -24,7 +24,7 @@ IHost host = new HostBuilder()
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
 
-        // Configure JSON serialization with camelCase naming policy
+        // Configure JSON serialization with the camelCase naming policy
         services.Configure<JsonSerializerOptions>(options =>
         {
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
