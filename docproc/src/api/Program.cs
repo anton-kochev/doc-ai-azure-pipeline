@@ -38,6 +38,9 @@ IHost host = new HostBuilder()
         services.Configure<FileUploadOptions>(
             context.Configuration.GetSection(FileUploadOptions.SectionName));
 
+        services.Configure<ServiceBusOptions>(
+            context.Configuration.GetSection(ServiceBusOptions.SectionName));
+
         // Register DbContext
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(
@@ -50,6 +53,8 @@ IHost host = new HostBuilder()
         // Register services
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IProcessJobService, ProcessJobService>();
+        services.AddSingleton<IServiceBusService, ServiceBusService>();
     })
     .Build();
 

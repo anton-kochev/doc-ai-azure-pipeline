@@ -21,17 +21,23 @@ public sealed class UploadFunctions
     private readonly ILogger<UploadFunctions> _logger;
     private readonly IBlobStorageService _blobStorageService;
     private readonly IDocumentService _documentService;
+    private readonly IProcessJobService _processJobService;
+    private readonly IServiceBusService _serviceBusService;
     private readonly FileUploadOptions _fileUploadOptions;
 
     public UploadFunctions(
         ILogger<UploadFunctions> logger,
         IBlobStorageService blobStorageService,
         IDocumentService documentService,
+        IProcessJobService processJobService,
+        IServiceBusService serviceBusService,
         IOptions<FileUploadOptions> fileUploadOptions)
     {
         _logger = logger;
         _blobStorageService = blobStorageService;
         _documentService = documentService;
+        _processJobService = processJobService;
+        _serviceBusService = serviceBusService;
         _fileUploadOptions = fileUploadOptions.Value;
     }
 
@@ -60,26 +66,29 @@ public sealed class UploadFunctions
                     error = "Invalid request",
                     message = "Content-Type must be multipart/form-data"
                 }));
+                
                 return badRequestResponse;
             }
 
-            // Extract boundary from Content-Type header
+            // Extract boundary from the Content-Type header
             string? boundary = contentType.Split(';')
                 .Select(x => x.Trim())
-                .FirstOrDefault(x => x.StartsWith("boundary=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("boundary=".Length)
-                .Trim('"');
+                .FirstOrDefault(x =>
+                    x.StartsWith("boundary=", StringComparison.OrdinalIgnoreCase))?["boundary=".Length..]
+                ?.Trim('"');
 
             if (string.IsNullOrEmpty(boundary))
             {
                 _logger.LogWarning("No boundary found in Content-Type");
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
+                
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid request",
                     message = "Missing boundary in multipart/form-data"
                 }));
+                
                 return badRequestResponse;
             }
 
@@ -92,11 +101,13 @@ public sealed class UploadFunctions
                 _logger.LogWarning("No file found in request");
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
+                
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid request",
                     message = "No file found in request"
                 }));
+                
                 return badRequestResponse;
             }
 
@@ -109,11 +120,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
+                
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file type",
                     message = $"File type '{fileData.ContentType}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
                 }));
+                
                 return badRequestResponse;
             }
 
@@ -123,11 +136,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
+                
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "File too large",
                     message = $"File size {fileData.Data.Length / 1024.0 / 1024.0:F2} MB exceeds the maximum allowed size of {_fileUploadOptions.MaxFileSizeMB} MB"
                 }));
+                
                 return badRequestResponse;
             }
 
@@ -135,11 +150,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
+                
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file size",
                     message = "File size must be greater than 0"
                 }));
+                
                 return badRequestResponse;
             }
 
@@ -147,7 +164,7 @@ public sealed class UploadFunctions
             byte[] sha256Hash;
             using (SHA256 sha256 = SHA256.Create())
             {
-                sha256Hash = sha256.ComputeHash(fileData.Data);
+                sha256Hash = await sha256.ComputeHashAsync(fileData.Data);
                 fileData.Data.Position = 0; // Reset stream position for upload
             }
 
@@ -159,8 +176,8 @@ public sealed class UploadFunctions
 
             _logger.LogInformation("File uploaded successfully: {FileName}, Size: {Size} bytes", result.FileName, result.FileSizeBytes);
 
-            // Get existing or create new Document record in database
-            (Guid documentId, bool isNew) = await _documentService.GetOrCreateDocumentAsync(
+            // Get existing or create new Document record in the database
+            (Guid documentId, bool isNewDocument) = await _documentService.GetOrCreateDocumentAsync(
                 fileName: result.FileName,
                 contentType: result.ContentType ?? "application/octet-stream",
                 sizeBytes: result.FileSizeBytes,
@@ -168,10 +185,11 @@ public sealed class UploadFunctions
                 blobPath: result.BlobPath,
                 blobETag: result.ETag,
                 sha256Hash: sha256Hash,
-                uploadedBy: "system" // TODO: Replace with actual user identity
+                uploadedBy: "system", // TODO: Replace with actual user identity
+                tenantId: fileData.TenantId
             );
 
-            if (isNew)
+            if (isNewDocument)
             {
                 _logger.LogInformation("Document record created: {DocumentId}", documentId);
             }
@@ -180,11 +198,41 @@ public sealed class UploadFunctions
                 _logger.LogInformation("Document already exists, returning existing record: {DocumentId}", documentId);
             }
 
-            HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
+            // Get existing or create a new ProcessJob with idempotency check
+            (Guid jobId, bool isNewJob) = await _processJobService.GetOrCreateJobAsync(
+                documentId: documentId,
+                tenantId: fileData.TenantId,
+                sha256Hash: sha256Hash,
+                extractionProfile: fileData.ExtractionProfile
+            );
+
+            if (isNewJob)
+            {
+                _logger.LogInformation("Process job created: {JobId}", jobId);
+
+                // Enqueue Service Bus message for new jobs only
+                await _serviceBusService.EnqueueJobAsync(
+                    jobId: jobId,
+                    documentId: documentId,
+                    correlationId: jobId.ToString()
+                );
+
+                _logger.LogInformation("Job message enqueued: {JobId}", jobId);
+            }
+            else
+            {
+                _logger.LogInformation("Process job already exists, returning existing job: {JobId}", jobId);
+            }
+
+            // Return 202 Accepted with job and document IDs
+            HttpResponseData response = req.CreateResponse(HttpStatusCode.Accepted);
             await response.WriteAsJsonAsync(new
             {
+                jobId,
                 documentId,
-                isNew,
+                isNewJob,
+                isNewDocument,
+                extractionProfile = fileData.ExtractionProfile,
                 blobUrl = result.BlobUrl,
                 fileName = result.FileName,
                 contentType = result.ContentType,
@@ -241,6 +289,11 @@ internal sealed class MultipartFormDataParser
         // Split by boundary
         string[] parts = content.Split(new[] { $"--{_boundary}" }, StringSplitOptions.RemoveEmptyEntries);
 
+        // Store form fields
+        string? extractionProfile = null;
+        Guid? tenantId = null;
+        FileData? fileData = null;
+
         foreach (string part in parts)
         {
             if (part.Trim() == "--" || string.IsNullOrWhiteSpace(part))
@@ -252,27 +305,54 @@ internal sealed class MultipartFormDataParser
                 continue;
 
             string headers = sections[0];
-            string fileContent = sections[1].TrimEnd('\r', '\n', '-');
+            string fieldContent = sections[1].TrimEnd('\r', '\n', '-');
 
             // Check if this is a file field
-            if (!headers.Contains("filename=", StringComparison.OrdinalIgnoreCase))
-                continue;
+            if (headers.Contains("filename=", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract filename
+                string? filename = ExtractValue(headers, "filename=");
+                if (string.IsNullOrEmpty(filename))
+                    continue;
 
-            // Extract filename
-            string? filename = ExtractValue(headers, "filename=");
-            if (string.IsNullOrEmpty(filename))
-                continue;
+                // Extract content type
+                string? contentTypeLine = headers.Split("\r\n")
+                    .FirstOrDefault(h => h.StartsWith("Content-Type:", StringComparison.OrdinalIgnoreCase));
+                string? contentType = contentTypeLine?.Substring("Content-Type:".Length).Trim();
 
-            // Extract content type
-            string? contentTypeLine = headers.Split("\r\n")
-                .FirstOrDefault(h => h.StartsWith("Content-Type:", StringComparison.OrdinalIgnoreCase));
-            string? contentType = contentTypeLine?.Substring("Content-Type:".Length).Trim();
+                // Convert content to stream
+                byte[] fileBytes = System.Text.Encoding.UTF8.GetBytes(fieldContent);
+                MemoryStream memoryStream = new(fileBytes);
 
-            // Convert content to stream
-            byte[] fileBytes = System.Text.Encoding.UTF8.GetBytes(fileContent);
-            MemoryStream memoryStream = new(fileBytes);
+                fileData = new FileData(filename, memoryStream, contentType);
+            }
+            else
+            {
+                // This is a regular form field
+                string? fieldName = ExtractValue(headers, "name=");
 
-            return new FileData(filename, memoryStream, contentType);
+                if (fieldName?.Equals("extractionProfile", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    extractionProfile = fieldContent.Trim();
+                }
+                else if (fieldName?.Equals("tenantId", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    if (Guid.TryParse(fieldContent.Trim(), out Guid parsedTenantId))
+                    {
+                        tenantId = parsedTenantId;
+                    }
+                }
+            }
+        }
+
+        // Return file with form fields
+        if (fileData != null)
+        {
+            return fileData with
+            {
+                ExtractionProfile = extractionProfile,
+                TenantId = tenantId
+            };
         }
 
         return null;
@@ -297,4 +377,9 @@ internal sealed class MultipartFormDataParser
 /// <summary>
 /// Represents a file extracted from multipart form data.
 /// </summary>
-internal record FileData(string FileName, Stream Data, string? ContentType);
+internal record FileData(
+    string FileName,
+    Stream Data,
+    string? ContentType,
+    string? ExtractionProfile = null,
+    Guid? TenantId = null);
