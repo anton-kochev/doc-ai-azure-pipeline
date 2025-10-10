@@ -13,9 +13,8 @@ env:
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/docproc-api
   AZURE_FUNCTIONAPP_NAME: docproc-dev
   AZURE_RESOURCE_GROUP: rg-docproc-dev-weu
-  LOGIN_SERVER: docker.io
+  LOGIN_SERVER: https://index.docker.io/v1/
   REGISTRY: ${{ secrets.DOCKERHUB_USERNAME }}
-  NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE: docproc-api
   TAG: ${{ github.sha }}
 
@@ -52,7 +51,7 @@ jobs:
           context: .
           file: ./docproc/src/api/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.TAG }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
@@ -67,10 +66,10 @@ jobs:
           az functionapp config container set \
             --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE }}:${{ env.TAG }} \
-            --registry-login-server ${{ env.LOGIN_SERVER }} \
-            --registry-username ${{ secrets.DOCKERHUB_USERNAME }} \
-            --registry-password ${{ secrets.DOCKERHUB_TOKEN }}
+            --docker-custom-image-name ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ env.TAG }} \
+            --docker-registry-server-url ${{ env.LOGIN_SERVER }} \
+            --docker-registry-server-user ${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.DOCKERHUB_TOKEN }}
 
           az functionapp restart \
             --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
