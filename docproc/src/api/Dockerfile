@@ -21,7 +21,7 @@ COPY . .
 
 # Build and publish in one layer to reduce intermediate data
 WORKDIR "docproc/src/api"
-RUN dotnet publish "api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:PublishTrimmed=true /p:TrimMode=link
+RUN dotnet publish "api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:SelfContained=false /p:PublishTrimmed=true /p:TrimMode=link
 
 # ======================================
 # Final image
