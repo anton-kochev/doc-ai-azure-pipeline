@@ -1,27 +1,9 @@
-# This workflow will build a container and deploy it to an Azure Functions App on Linux when a commit is pushed to your default branch.
-#
-# This workflow assumes you have already created the target Azure Functions app.
-# For instructions see https://learn.microsoft.com/en-us/azure/azure-functions/functions-create-function-linux-custom-image?tabs=in-process%2Cbash%2Cazure-cli&pivots=programming-language-csharp
-#
-# To configure this workflow:
-# 1. Set up the following secrets in your repository:
-#   - AZURE_RBAC_CREDENTIALS
-#   - REGISTRY_USERNAME
-#   - REGISTRY_PASSWORD
-# 2. Change env variables for your configuration.
-#
-# For more information on:
-#   - GitHub Actions for Azure: https://github.com/Azure/Actions
-#   - Azure Functions Container Action: https://github.com/Azure/functions-container-action
-#   - Azure Service Principal for RBAC: https://github.com/Azure/functions-action#using-azure-service-principal-for-rbac-as-deployment-credential
-#
-# For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples/tree/master/FunctionApp
-
-name: Deploy Worker.Orchestrator container to Azure Functions App
+name: Build and Deploy Worker.Orchestrator to Azure Functions App
 
 on:
   push:
-    branches: ["main"]
+    branches: 
+      - main
     paths:
       - 'docproc/src/worker/orchestrator/Worker.Orchestrator/**'
       - '.github/workflows/deploy-worker-orchestrator-container.yml'
@@ -31,53 +13,43 @@ permissions:
   contents: read
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'your-app-name'   # set this to your function app name on Azure
-  LOGIN_SERVER: 'login-server'              # set this to login server for your private container registry (e.g. 'contoso.azurecr.io', 'index.docker.io' )
-  REGISTRY: 'your-registry'                 # set this to proper value for REGISTRY
-  NAMESPACE: 'your-namespace'               # set this to proper value for NAMESPACE
-  IMAGE: 'worker-orchestrator'              # image name for the Worker.Orchestrator function
-  TAG: '${{ github.sha }}'                  # use git commit SHA as tag for versioning
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/api"
+  DOTNET_VERSION: "8.0.x"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment: dev
+
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: "Checkout GitHub Action"
+        uses: actions/checkout@v4
 
-    - name: 'Login via Azure CLI'
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: 'Docker Login'
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ env.LOGIN_SERVER }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: "Resolve Project Dependencies Using Dotnet"
+        shell: bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+          
+      - name: "Login to Azure"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: "Run Azure Functions Action"
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: "docproc-orchestrator-dev"
+          slot-name: "Production"
+          package: "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
 
-    - name: 'Compose Customized Docker Image'
-      shell: bash
-      run: |
-        # Build and push the Docker image for Worker.Orchestrator
-        # Note: Ensure a Dockerfile exists in the Worker.Orchestrator directory
-        cd docproc/src/worker/orchestrator/Worker.Orchestrator
-        docker build . -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE }}:${{ env.TAG }}
-        docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE }}:${{ env.TAG }}
-
-    - name: 'Run Azure Functions Container Action'
-      uses: Azure/functions-container-action@v1
-      id: fa
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE }}:${{ env.TAG }}
-
-    - name: 'Published functionapp url'
-      run: |
-        echo "${{ steps.fa.outputs.app-url }}"
-
-    - name: Azure logout
-      run: |
-        az logout
+      - name: Azure logout
+        run: |
+          az logout
