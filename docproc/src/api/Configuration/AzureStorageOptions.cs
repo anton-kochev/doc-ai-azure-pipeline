@@ -19,9 +19,4 @@ public class AzureStorageOptions
     /// Default container name for uploads.
     /// </summary>
     public string ContainerName { get; set; } = "uploads";
-
-    /// <summary>
-    /// SAS token expiration time in hours.
-    /// </summary>
-    public int SasExpirationHours { get; set; } = 1;
 }

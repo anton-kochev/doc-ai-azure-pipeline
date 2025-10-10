@@ -45,3 +45,7 @@ jobs:
           app-name: "docproc-dev"
           slot-name: "Production"
           package: "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
+
+      - name: Azure logout
+        run: |
+          az logout
