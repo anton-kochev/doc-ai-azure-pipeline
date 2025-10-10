@@ -13,7 +13,7 @@
         "durableTask": {
             "hubName": "DocumentProcessingHub",
             "storageProvider": {
-                "type": "azure_storage"
+                "type": "AzureStorage"
             }
         }
     }

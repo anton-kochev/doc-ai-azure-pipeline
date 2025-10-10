@@ -22,10 +22,25 @@ public sealed class BlobStorageService : IBlobStorageService
     {
         ValidateConfiguration();
 
-        // Use Azure AD authentication (Managed Identity or DefaultAzureCredential)
-        Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
-        BlobServiceClient blobServiceClient = new(blobServiceUri, new DefaultAzureCredential());
+        // Create BlobServiceClient - use connection string if provided, otherwise use Managed Identity
+        BlobServiceClient blobServiceClient;
+        if (!string.IsNullOrEmpty(_options.ConnectionString))
+        {
+            // Local development with Azurite or connection string
+            blobServiceClient = new BlobServiceClient(_options.ConnectionString);
+        }
+        else
+        {
+            // Production with Managed Identity
+            Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
+            blobServiceClient = new(blobServiceUri, new DefaultAzureCredential());
+        }
+
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
+
+        // Ensure the container exists (especially for Azurite)
+        await containerClient.CreateIfNotExistsAsync();
+
         BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
         // Set content type if provided
@@ -57,9 +72,9 @@ public sealed class BlobStorageService : IBlobStorageService
 
     private void ValidateConfiguration()
     {
-        if (string.IsNullOrEmpty(_options.AccountName))
+        if (string.IsNullOrEmpty(_options.ConnectionString) && string.IsNullOrEmpty(_options.AccountName))
         {
-            throw new InvalidOperationException("Azure Storage account name is not configured");
+            throw new InvalidOperationException("Either Azure Storage connection string or account name must be configured");
         }
     }
 }

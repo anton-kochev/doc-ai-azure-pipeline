@@ -11,7 +11,12 @@ public class AzureStorageOptions
     public const string SectionName = "AzureStorage";
 
     /// <summary>
-    /// Azure Storage account name.
+    /// Azure Storage connection string. If provided, this will be used instead of AccountName with managed identity.
+    /// </summary>
+    public string? ConnectionString { get; set; }
+
+    /// <summary>
+    /// Azure Storage account name. Used only when ConnectionString is not provided.
     /// </summary>
     public string AccountName { get; set; } = string.Empty;
 
