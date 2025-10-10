@@ -1,21 +1,33 @@
+﻿# ======================================
+# Base image for running the Function App
+# ======================================
 FROM mcr.microsoft.com/azure-functions/dotnet-isolated:4-dotnet-isolated8.0 AS base
 WORKDIR /home/site/wwwroot
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-COPY ["api/api.csproj", "api/"]
-RUN dotnet restore "api/api.csproj"
-COPY . .
-WORKDIR "/src/api"
-RUN dotnet build "./api.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-FROM base AS final
-WORKDIR /home/site/wwwroot
-COPY --from=publish /app/publish .
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+# ======================================
+# Build stage
+# ======================================
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy only the csproj file first (for build cache)
+COPY ["docproc/src/api/api.csproj", "api/"]
+RUN dotnet restore "api/api.csproj" --use-current-runtime
+
+# Copy everything else
+COPY . .
+
+# Build and publish in one layer to reduce intermediate data
+WORKDIR "docproc/src/api"
+RUN dotnet publish "api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:PublishTrimmed=true /p:TrimMode=link
+
+# ======================================
+# Final image
+# ======================================
+FROM base AS final
+WORKDIR /home/site/wwwroot
+
+# Copy published output from build stage
+COPY --from=build /app/publish .
