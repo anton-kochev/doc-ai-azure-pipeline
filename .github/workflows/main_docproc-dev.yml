@@ -12,6 +12,12 @@ on:
 env:
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/docproc-api
   AZURE_FUNCTIONAPP_NAME: docproc-dev
+  AZURE_RESOURCE_GROUP: rg-docproc-dev-weu
+  LOGIN_SERVER: docker.io
+  REGISTRY: ${{ secrets.DOCKERHUB_USERNAME }}
+  NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE: docproc-api
+  TAG: ${{ github.sha }}
 
 jobs:
   build-and-deploy:
@@ -56,13 +62,20 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: "Deploy to Azure Function App"
-        uses: Azure/functions-action@v1
-        id: fa
-        with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          slot-name: "Production"
-          image: ${{ env.DOCKER_IMAGE_NAME }}:latest
+      - name: 'Deploy to Azure Function App (container)'
+        run: |
+          az functionapp config container set \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE }}:${{ env.TAG }} \
+            --registry-login-server ${{ env.LOGIN_SERVER }} \
+            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+            --registry-password ${{ secrets.REGISTRY_PASSWORD }}
+
+          az functionapp restart \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+
 
       - name: Azure logout
         run: |
