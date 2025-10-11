@@ -21,14 +21,14 @@ public class DocumentProcessingOrchestrator
     public Task<string> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
-        var input = context.GetInput<ProcessDocumentMessage>();
+        ProcessDocumentMessage? input = context.GetInput<ProcessDocumentMessage>();
 
         if (input == null)
         {
             throw new ArgumentNullException(nameof(input), "Orchestrator input cannot be null");
         }
 
-        var logger = context.CreateReplaySafeLogger<DocumentProcessingOrchestrator>();
+        ILogger logger = context.CreateReplaySafeLogger<DocumentProcessingOrchestrator>();
 
         logger.LogInformation(
             "Starting document processing orchestration for JobId: {JobId}, DocumentId: {DocumentId}",

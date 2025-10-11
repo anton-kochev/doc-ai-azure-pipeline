@@ -23,8 +23,9 @@ This project implements a microservices architecture for document AI processing 
 
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js](https://nodejs.org/) (LTS version)
-- [Docker](https://www.docker.com/get-started) (optional, for containerization)
-- Azure Storage Account (for blob storage features)
+- [Docker](https://www.docker.com/get-started) and Docker Compose (for local emulators)
+- Azure Storage Account (for blob storage features, or use local Azurite emulator)
+- Azure Service Bus (for message queue features, or use local emulator)
 
 ## Getting Started
 
@@ -35,20 +36,81 @@ git clone <repository-url>
 cd doc-ai-azure-pipeline/docproc
 ```
 
-### 2. Configure Azure Storage
+### 2. Local Development with Emulators (Recommended)
 
-Create or update `src/api/appsettings.Development.json`:
+For local development, you can use Docker containers to run Azure Storage (Azurite) and Azure Service Bus emulators:
+
+#### Start the Emulators
+
+```bash
+# From the repository root
+docker-compose up -d
+```
+
+This starts:
+- **Azurite** - Azure Storage emulator (Blob, Queue, Table services)
+  - Blob service: `http://localhost:10000`
+  - Queue service: `http://localhost:10001`
+  - Table service: `http://localhost:10002`
+- **Service Bus Emulator** - Azure Service Bus emulator
+  - AMQP port: `5672`
+  - Management port: `5300`
+
+#### Configure the Emulator Connection Strings
+
+The `appsettings.Development.json` file is already configured with local emulator connection strings:
 
 ```json
 {
   "AzureStorage": {
-    "ConnectionString": "your-azure-storage-connection-string",
-    "ContainerName": "your-container-name"
+    "ConnectionString": "UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://127.0.0.1",
+    "ContainerName": "uploads"
+  },
+  "ServiceBus": {
+    "ConnectionString": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "QueueName": "documents.process"
   }
 }
 ```
 
-### 3. Run the API
+**Note:** The Service Bus emulator connection string format is specifically for native local development. When the emulator container and your application are running natively on the local machine, use this exact connection string format.
+
+#### Service Bus Queue Configuration
+
+The Service Bus emulator is configured via `config.json` in the repository root. The `documents.process` queue is pre-configured with the following properties:
+
+- **Dead-lettering on message expiration**: Enabled
+- **Message TTL**: 1 day
+- **Lock duration**: 5 minutes
+- **Max delivery count**: 10
+
+To modify queue configuration or add new queues/topics, edit `config.json` and restart the emulator.
+
+#### Stop the Emulators
+
+```bash
+docker-compose down
+```
+
+### 3. Configure Azure Services (Production/Cloud)
+
+For non-local environments, create or update `src/api/appsettings.json`:
+
+```json
+{
+  "AzureStorage": {
+    "AccountName": "your-storage-account-name",
+    "ContainerName": "your-container-name"
+  },
+  "ServiceBus": {
+    "ConnectionString": "your-service-bus-connection-string",
+    "Namespace": "your-namespace.servicebus.windows.net",
+    "QueueName": "documents.process"
+  }
+}
+```
+
+### 4. Run the API
 
 ```bash
 # Build the solution
@@ -63,7 +125,7 @@ The API will be available at:
 - HTTPS: `https://localhost:8081`
 - Swagger UI: `http://localhost:8080/swagger` (in Development mode)
 
-### 4. Run the Angular Client
+### 5. Run the Angular Client
 
 ```bash
 cd src/client/receiver-app
@@ -189,6 +251,9 @@ Full API documentation is available at `/swagger` when running in Development mo
 ### Infrastructure
 - Docker (Linux containers)
 - Azure Blob Storage
+- Azure Service Bus
+- Azurite (Azure Storage emulator)
+- Azure Service Bus Emulator
 
 ## Configuration
 
@@ -206,6 +271,11 @@ Full API documentation is available at `/swagger` when running in Development mo
   "AzureStorage": {
     "ConnectionString": "",
     "ContainerName": ""
+  },
+  "ServiceBus": {
+    "ConnectionString": "",
+    "Namespace": "",
+    "QueueName": "documents.process"
   }
 }
 ```
@@ -287,6 +357,8 @@ This will regenerate the Claude AI agent configuration and prompt artifacts.
 
 ## Recent Updates
 
+- ✅ Azure Service Bus emulator support for local development
+- ✅ Azurite (Azure Storage emulator) integration with docker-compose
 - ✅ Knowledge Base with comprehensive .NET/C# code style guides
 - ✅ Client-side file upload with Azure SAS-based uploads
 - ✅ Azure Blob Storage support with SAS URL generation
