@@ -1,8 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# 
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "api", "src\api\api.csproj", "{C6BC665D-F3E1-4ADF-8F1F-81F3159EEE77}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Worker.Orchestrator", "src\worker\orchestrator\Worker.Orchestrator\Worker.Orchestrator.csproj", "{02488C20-B4BD-4A59-B725-B63A9EF518DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceBusQueueInspector", "ServiceBusQueueInspector\ServiceBusQueueInspector.csproj", "{9407E78C-C4E4-439C-9106-4D88DFF0686C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceBusQueueInspector.Tests", "ServiceBusQueueInspector.Tests\ServiceBusQueueInspector.Tests.csproj", "{EDD52CAB-2FFC-48C5-A7AA-E0C5651518EF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +23,13 @@ Global
 		{02488C20-B4BD-4A59-B725-B63A9EF518DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{02488C20-B4BD-4A59-B725-B63A9EF518DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{02488C20-B4BD-4A59-B725-B63A9EF518DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9407E78C-C4E4-439C-9106-4D88DFF0686C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9407E78C-C4E4-439C-9106-4D88DFF0686C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9407E78C-C4E4-439C-9106-4D88DFF0686C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9407E78C-C4E4-439C-9106-4D88DFF0686C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDD52CAB-2FFC-48C5-A7AA-E0C5651518EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDD52CAB-2FFC-48C5-A7AA-E0C5651518EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDD52CAB-2FFC-48C5-A7AA-E0C5651518EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDD52CAB-2FFC-48C5-A7AA-E0C5651518EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

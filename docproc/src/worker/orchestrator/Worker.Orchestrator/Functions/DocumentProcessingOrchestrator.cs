@@ -23,10 +23,7 @@ public class DocumentProcessingOrchestrator
     {
         ProcessDocumentMessage? input = context.GetInput<ProcessDocumentMessage>();
 
-        if (input == null)
-        {
-            throw new ArgumentNullException(nameof(input), "Orchestrator input cannot be null");
-        }
+        _ = input ?? throw new ArgumentNullException(nameof(input), "Orchestrator input cannot be null");
 
         ILogger logger = context.CreateReplaySafeLogger<DocumentProcessingOrchestrator>();
 
