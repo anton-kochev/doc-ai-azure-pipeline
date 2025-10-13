@@ -6,11 +6,8 @@ on:
       - main
     paths:
       - 'docproc/src/worker/orchestrator/Worker.Orchestrator/**'
-      - '.github/workflows/deploy-worker-orchestrator-container.yml'
+      - '.github/workflows/deploy-worker-orchestrator-functions.yml'
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/api"
@@ -19,7 +16,6 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - name: "Checkout GitHub Action"

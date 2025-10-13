@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'docproc/src/api/**'
-      - '.github/workflows/main_docproc-dev.yml'
+      - '.github/workflows/deploy-api-functions.yml'
   workflow_dispatch:
 
 env:
