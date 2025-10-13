@@ -50,6 +50,9 @@ IHost host = new HostBuilder()
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorNumbersToAdd: null)));
 
+        // Register TimeProvider for dependency injection
+        services.AddSingleton(TimeProvider.System);
+
         // Register services
         services.AddScoped<IBlobStorageService, BlobStorageService>();
         services.AddScoped<IDocumentService, DocumentService>();
