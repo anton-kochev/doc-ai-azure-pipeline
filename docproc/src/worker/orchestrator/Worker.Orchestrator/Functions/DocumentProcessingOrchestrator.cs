@@ -10,13 +10,6 @@ namespace Worker.Orchestrator.Functions;
 /// </summary>
 public class DocumentProcessingOrchestrator
 {
-    private readonly ILogger<DocumentProcessingOrchestrator> _logger;
-
-    public DocumentProcessingOrchestrator(ILogger<DocumentProcessingOrchestrator> logger)
-    {
-        _logger = logger;
-    }
-
     [Function(nameof(DocumentProcessingOrchestrator))]
     public Task<string> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
