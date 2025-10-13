@@ -23,7 +23,7 @@ public class DocumentIngestionTrigger
 
     [Function(nameof(DocumentIngestionTrigger))]
     public async Task Run(
-        [ServiceBusTrigger("documents.process", Connection = "ServiceBusConnectionString")]
+        [ServiceBusTrigger("documents.process", Connection = "ServiceBusConnection")]
         ServiceBusReceivedMessage message,
         ServiceBusMessageActions messageActions,
         [DurableClient] DurableTaskClient durableClient,
