@@ -14,11 +14,13 @@ public sealed class ProcessJobService : IProcessJobService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<ProcessJobService> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public ProcessJobService(AppDbContext dbContext, ILogger<ProcessJobService> logger)
+    public ProcessJobService(AppDbContext dbContext, ILogger<ProcessJobService> logger, TimeProvider timeProvider)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     /// <inheritdoc />
@@ -85,7 +87,7 @@ public sealed class ProcessJobService : IProcessJobService
             Status = ProcessJobStatus.Pending,
             Stage = ProcessJobStage.Uploaded,
             Attempts = 0,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
             CorrelationId = correlationId ?? Guid.NewGuid().ToString(),
             ExtractionProfile = extractionProfile,
             Priority = priority

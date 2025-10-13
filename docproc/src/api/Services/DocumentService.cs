@@ -12,11 +12,13 @@ public sealed class DocumentService : IDocumentService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<DocumentService> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public DocumentService(AppDbContext dbContext, ILogger<DocumentService> logger)
+    public DocumentService(AppDbContext dbContext, ILogger<DocumentService> logger, TimeProvider timeProvider)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     /// <inheritdoc />
@@ -43,7 +45,7 @@ public sealed class DocumentService : IDocumentService
             BlobETag = blobETag,
             Sha256Hash = sha256Hash,
             UploadedBy = uploadedBy,
-            UploadedAtUtc = DateTime.UtcNow,
+            UploadedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
             Status = DocumentStatus.Uploaded
         };
 

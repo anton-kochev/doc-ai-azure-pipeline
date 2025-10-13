@@ -66,7 +66,7 @@ public sealed class UploadFunctions
                     error = "Invalid request",
                     message = "Content-Type must be multipart/form-data"
                 }));
-                
+
                 return badRequestResponse;
             }
 
@@ -82,13 +82,13 @@ public sealed class UploadFunctions
                 _logger.LogWarning("No boundary found in Content-Type");
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
-                
+
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid request",
                     message = "Missing boundary in multipart/form-data"
                 }));
-                
+
                 return badRequestResponse;
             }
 
@@ -101,13 +101,13 @@ public sealed class UploadFunctions
                 _logger.LogWarning("No file found in request");
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
-                
+
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid request",
                     message = "No file found in request"
                 }));
-                
+
                 return badRequestResponse;
             }
 
@@ -120,13 +120,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
-                
+
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file type",
                     message = $"File type '{fileData.ContentType}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
                 }));
-                
+
                 return badRequestResponse;
             }
 
@@ -136,13 +136,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
-                
+
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "File too large",
                     message = $"File size {fileData.Data.Length / 1024.0 / 1024.0:F2} MB exceeds the maximum allowed size of {_fileUploadOptions.MaxFileSizeMB} MB"
                 }));
-                
+
                 return badRequestResponse;
             }
 
@@ -150,13 +150,13 @@ public sealed class UploadFunctions
             {
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
-                
+
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
                 {
                     error = "Invalid file size",
                     message = "File size must be greater than 0"
                 }));
-                
+
                 return badRequestResponse;
             }
 
