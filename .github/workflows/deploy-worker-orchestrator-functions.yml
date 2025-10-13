@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/api"
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/worker/orchestrator/Worker.Orchestrator"
   DOTNET_VERSION: "8.0.x"
 
 jobs:
