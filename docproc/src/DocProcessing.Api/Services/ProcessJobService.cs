@@ -23,6 +23,36 @@ public sealed class ProcessJobService : IProcessJobService
         _timeProvider = timeProvider;
     }
 
+    public async Task<bool> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync([jobId], cancellationToken);
+
+        if (job == null)
+        {
+            _logger.LogError("Cannot retry job: Job not found. JobId={JobId}", jobId);
+            return false;
+        }
+
+        if (job.Status != ProcessJobStatus.Failed)
+        {
+            _logger.LogWarning("Cannot retry job: Job is not in Failed state. JobId={JobId}, Status={Status}",
+                job.JobId, job.Status);
+            return false;
+        }
+        
+        job.Status = ProcessJobStatus.Pending;
+        job.Stage = ProcessJobStage.Uploaded;
+        job.LastErrorCode = null;
+        job.LastErrorMessage = null;
+        
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Job transitioned to Pending for retry. JobId={JobId}, TotalAttempts={Attempts}",
+            job.JobId, job.Attempts);
+
+        return true;
+    }
+
     /// <inheritdoc />
     public string ComputeIdempotencyKey(Guid? tenantId, byte[] sha256Hash, string? extractionProfile)
     {

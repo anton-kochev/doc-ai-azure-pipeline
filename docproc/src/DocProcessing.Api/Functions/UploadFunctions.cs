@@ -262,6 +262,49 @@ public sealed class UploadFunctions
             return errorResponse;
         }
     }
+
+    [Function("RetryJob")]
+    public async Task<HttpResponseData> RetryJob(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/jobs/{jobId}/retry")]
+        HttpRequestData req, string jobId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(jobId, out Guid parsedJobId))
+        {
+            HttpResponseData badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { error = "Invalid job ID format" },
+                cancellationToken: cancellationToken);
+            return badResponse;
+        }
+
+        bool success = await _processJobService.RetryFailedJobAsync(parsedJobId, cancellationToken);
+
+        if (success)
+        {
+            // Re-enqueue to Service Bus
+            // await _serviceBusService.EnqueueJobAsync(
+            //     jobId: parsedJobId,
+            //     documentId: /* you'll need to fetch this */,
+            //     correlationId: parsedJobId.ToString()
+            // );
+
+            HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(new
+            {
+                message = "Job re-queued for retry",
+                jobId = parsedJobId
+            }, cancellationToken: cancellationToken);
+            return response;
+        }
+        else
+        {
+            HttpResponseData notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteAsJsonAsync(new
+            {
+                error = "Job not found or not in Failed status"
+            }, cancellationToken: cancellationToken);
+            return notFoundResponse;
+        }
+    }
 }
 
 /// <summary>

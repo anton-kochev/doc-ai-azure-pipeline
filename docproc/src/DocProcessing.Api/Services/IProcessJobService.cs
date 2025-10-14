@@ -24,6 +24,13 @@ public interface IProcessJobService
         byte priority = 0);
 
     /// <summary>
+    /// Transitions a failed job back to Pending status for retry.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to retry.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<bool> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Computes the idempotency key for a job based on tenant, document hash, and extraction profile.
     /// </summary>
     /// <param name="tenantId">Optional tenant identifier.</param>
