@@ -77,7 +77,8 @@ public enum ProcessJobStatus
     Pending,
     Processing,
     Completed,
-    Failed
+    Failed,
+    ManualReview,
 }
 
 public enum ProcessJobStage

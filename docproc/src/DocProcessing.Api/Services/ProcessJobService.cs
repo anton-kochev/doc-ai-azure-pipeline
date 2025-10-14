@@ -104,4 +104,107 @@ public sealed class ProcessJobService : IProcessJobService
 
         return (newJob.JobId, true);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> StartProcessingAsync(Guid jobId)
+    {
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot start processing: Job not found. JobId={JobId}", jobId);
+            return false;
+        }
+
+        if (job.Status != ProcessJobStatus.Pending)
+        {
+            _logger.LogWarning(
+                "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}",
+                jobId,
+                job.Status);
+            return false;
+        }
+
+        job.Status = ProcessJobStatus.Processing;
+        job.StartedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        job.Attempts++;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}",
+            jobId,
+            job.Attempts);
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> CompleteJobAsync(Guid jobId)
+    {
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot complete job: Job not found. JobId={JobId}", jobId);
+            return false;
+        }
+
+        if (job.Status != ProcessJobStatus.Processing)
+        {
+            _logger.LogWarning(
+                "Cannot complete job: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
+                jobId,
+                job.Status);
+            return false;
+        }
+
+        job.Status = ProcessJobStatus.Completed;
+        job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Job completed successfully. JobId={JobId}, Duration={Duration}",
+            jobId,
+            job.CompletedAtUtc - job.StartedAtUtc);
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> FailJobAsync(Guid jobId, string? errorCode = null, string? errorMessage = null)
+    {
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot fail job: Job not found. JobId={JobId}", jobId);
+            return false;
+        }
+
+        if (job.Status != ProcessJobStatus.Processing)
+        {
+            _logger.LogWarning(
+                "Cannot fail job: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
+                jobId,
+                job.Status);
+            return false;
+        }
+
+        job.Status = ProcessJobStatus.Failed;
+        job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        job.LastErrorCode = errorCode;
+        job.LastErrorMessage = errorMessage;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogError(
+            "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}",
+            jobId,
+            errorCode,
+            errorMessage);
+
+        return true;
+    }
 }
