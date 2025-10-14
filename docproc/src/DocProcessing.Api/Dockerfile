@@ -13,15 +13,15 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy only the csproj file first (for build cache)
-COPY ["docproc/src/api/api.csproj", "api/"]
-RUN dotnet restore "api/api.csproj" --use-current-runtime
+COPY ["docproc/src/DocProcessing.Api/DocProcessing.Api.csproj", "api/"]
+RUN dotnet restore "api/DocProcessing.Api.csproj" --use-current-runtime
 
 # Copy everything else
 COPY . .
 
 # Build and publish in one layer to reduce intermediate data
-WORKDIR "docproc/src/api"
-RUN dotnet publish "api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:SelfContained=false
+WORKDIR "docproc/src/DocProcessing.Api/DocProcessing.Api.csproj"
+RUN dotnet publish "DocProcessing.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:SelfContained=false
 
 # ======================================
 # Final image

@@ -16,16 +16,6 @@ public interface IBlobStorageService
 }
 
 /// <summary>
-/// Result of SAS URL generation.
-/// </summary>
-public record SasUrlResult(
-    string SasUrl,
-    DateTimeOffset ExpiresOn,
-    string FileName,
-    string? ContentType
-);
-
-/// <summary>
 /// Result of blob upload.
 /// </summary>
 public record BlobUploadResult(
