@@ -1,11 +1,14 @@
 using DocProcessing.Api.Configuration;
 using DocProcessing.Api.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace DocProcessing.Api.Tests.Services;
 
 public class BlobStorageServiceTests
 {
+    private readonly Mock<ILogger<BlobStorageService>> _loggerMock = new();
+
     #region Constructor Tests
 
     [Fact]
@@ -19,7 +22,7 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options));
+        Exception? exception = Record.Exception(() => new BlobStorageService(options, _loggerMock.Object));
         Assert.Null(exception);
     }
 
@@ -34,7 +37,7 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options));
+        Exception? exception = Record.Exception(() => new BlobStorageService(options, _loggerMock.Object));
         Assert.Null(exception);
     }
 
@@ -53,7 +56,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options);
+        BlobStorageService service = new(options, _loggerMock.Object);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
@@ -74,7 +77,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options);
+        BlobStorageService service = new(options, _loggerMock.Object);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
@@ -95,7 +98,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options);
+        BlobStorageService service = new(options, _loggerMock.Object);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert

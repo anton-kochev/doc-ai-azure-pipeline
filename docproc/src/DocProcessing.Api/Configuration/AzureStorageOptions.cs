@@ -24,4 +24,19 @@ public class AzureStorageOptions
     /// Default container name for uploads.
     /// </summary>
     public string ContainerName { get; set; } = "uploads";
+
+    /// <summary>
+    /// Maximum number of retry attempts for transient failures.
+    /// </summary>
+    public int MaxRetries { get; set; } = 5;
+
+    /// <summary>
+    /// Delay between retry attempts in seconds.
+    /// </summary>
+    public int RetryDelaySeconds { get; set; } = 2;
+
+    /// <summary>
+    /// Maximum retry delay in seconds (for exponential backoff).
+    /// </summary>
+    public int MaxRetryDelaySeconds { get; set; } = 30;
 }

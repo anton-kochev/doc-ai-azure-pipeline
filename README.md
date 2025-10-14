@@ -290,10 +290,6 @@ The API is built with Azure Functions and provides the following endpoints:
 
 ### Upload Endpoints
 
-- `POST /api/upload/sas` - Generate SAS URL for direct client-side upload
-  - Request: `{ "fileName": "string" }`
-  - Response: `{ "sasUrl": "string", "blobUrl": "string" }`
-
 - `POST /api/upload` - Server-side file upload
   - Content-Type: `multipart/form-data`
   - Form field: `file`

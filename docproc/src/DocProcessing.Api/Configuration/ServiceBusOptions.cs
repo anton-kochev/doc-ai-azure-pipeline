@@ -22,4 +22,24 @@ public sealed class ServiceBusOptions
     /// If not provided, Managed Identity will be used.
     /// </summary>
     public string? ConnectionString { get; set; }
+
+    /// <summary>
+    /// Maximum number of retry attempts for transient failures.
+    /// </summary>
+    public int MaxRetries { get; set; } = 5;
+
+    /// <summary>
+    /// Delay between retry attempts in seconds.
+    /// </summary>
+    public int RetryDelaySeconds { get; set; } = 1;
+
+    /// <summary>
+    /// Maximum retry delay in seconds (for exponential backoff).
+    /// </summary>
+    public int MaxRetryDelaySeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Timeout for Service Bus operations in seconds.
+    /// </summary>
+    public int TryTimeoutSeconds { get; set; } = 60;
 }

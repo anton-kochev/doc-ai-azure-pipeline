@@ -30,16 +30,36 @@ public sealed class ServiceBusService : IServiceBusService, IAsyncDisposable
             throw new InvalidOperationException("ServiceBus:QueueName is not configured");
         }
 
+        // Configure retry options for resilience against transient failures
+        ServiceBusClientOptions clientOptions = new()
+        {
+            RetryOptions = new ServiceBusRetryOptions
+            {
+                Mode = ServiceBusRetryMode.Exponential,
+                MaxRetries = _options.MaxRetries,
+                Delay = TimeSpan.FromSeconds(_options.RetryDelaySeconds),
+                MaxDelay = TimeSpan.FromSeconds(_options.MaxRetryDelaySeconds),
+                TryTimeout = TimeSpan.FromSeconds(_options.TryTimeoutSeconds)
+            }
+        };
+
+        _logger.LogInformation(
+            "Configured Service Bus retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s, TryTimeout={TryTimeout}s",
+            _options.MaxRetries,
+            _options.RetryDelaySeconds,
+            _options.MaxRetryDelaySeconds,
+            _options.TryTimeoutSeconds);
+
         // Create a Service Bus client using connection string or Managed Identity
         if (!string.IsNullOrWhiteSpace(_options.ConnectionString))
         {
             _logger.LogInformation("Initializing Service Bus client with connection string");
-            _client = new ServiceBusClient(_options.ConnectionString);
+            _client = new ServiceBusClient(_options.ConnectionString, clientOptions);
         }
         else if (!string.IsNullOrWhiteSpace(_options.Namespace))
         {
             _logger.LogInformation("Initializing Service Bus client with Managed Identity for namespace: {Namespace}", _options.Namespace);
-            _client = new ServiceBusClient(_options.Namespace, new DefaultAzureCredential());
+            _client = new ServiceBusClient(_options.Namespace, new DefaultAzureCredential(), clientOptions);
         }
         else
         {

@@ -1,6 +1,8 @@
+using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using DocProcessing.Api.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace DocProcessing.Api.Services;
@@ -11,10 +13,14 @@ namespace DocProcessing.Api.Services;
 public sealed class BlobStorageService : IBlobStorageService
 {
     private readonly AzureStorageOptions _options;
+    private readonly ILogger<BlobStorageService> _logger;
 
-    public BlobStorageService(IOptions<AzureStorageOptions> options)
+    public BlobStorageService(
+        IOptions<AzureStorageOptions> options,
+        ILogger<BlobStorageService> logger)
     {
         _options = options.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -22,18 +28,37 @@ public sealed class BlobStorageService : IBlobStorageService
     {
         ValidateConfiguration();
 
+        // Configure retry options for resilience against transient failures
+        BlobClientOptions clientOptions = new()
+        {
+            Retry =
+            {
+                Mode = RetryMode.Exponential,
+                MaxRetries = _options.MaxRetries,
+                Delay = TimeSpan.FromSeconds(_options.RetryDelaySeconds),
+                MaxDelay = TimeSpan.FromSeconds(_options.MaxRetryDelaySeconds),
+                NetworkTimeout = TimeSpan.FromSeconds(100)
+            }
+        };
+
+        _logger.LogDebug(
+            "Configured Blob Storage retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s",
+            _options.MaxRetries,
+            _options.RetryDelaySeconds,
+            _options.MaxRetryDelaySeconds);
+
         // Create BlobServiceClient - use connection string if provided, otherwise use Managed Identity
         BlobServiceClient blobServiceClient;
         if (!string.IsNullOrEmpty(_options.ConnectionString))
         {
             // Local development with Azurite or connection string
-            blobServiceClient = new BlobServiceClient(_options.ConnectionString);
+            blobServiceClient = new BlobServiceClient(_options.ConnectionString, clientOptions);
         }
         else
         {
             // Production with Managed Identity
             Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
-            blobServiceClient = new(blobServiceUri, new DefaultAzureCredential());
+            blobServiceClient = new BlobServiceClient(blobServiceUri, new DefaultAzureCredential(), clientOptions);
         }
 
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
