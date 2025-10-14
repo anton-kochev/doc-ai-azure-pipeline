@@ -5,8 +5,8 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
-using DocProcessing.Api.Configuration;
-using DocProcessing.Api.Services;
+using DocProcessing.Application.Interfaces;
+using DocProcessing.Infrastructure.FileUpload;
 
 namespace DocProcessing.Api.Functions;
 
@@ -16,25 +16,25 @@ namespace DocProcessing.Api.Functions;
 public sealed class UploadFunctions
 {
     private readonly ILogger<UploadFunctions> _logger;
-    private readonly IBlobStorageService _blobStorageService;
+    private readonly IStorageService _storageService;
     private readonly IDocumentService _documentService;
     private readonly IProcessJobService _processJobService;
-    private readonly IServiceBusService _serviceBusService;
+    private readonly IMessagingService _messagingService;
     private readonly FileUploadOptions _fileUploadOptions;
 
     public UploadFunctions(
         ILogger<UploadFunctions> logger,
-        IBlobStorageService blobStorageService,
+        IStorageService storageService,
         IDocumentService documentService,
         IProcessJobService processJobService,
-        IServiceBusService serviceBusService,
+        IMessagingService messagingService,
         IOptions<FileUploadOptions> fileUploadOptions)
     {
         _logger = logger;
-        _blobStorageService = blobStorageService;
+        _storageService = storageService;
         _documentService = documentService;
         _processJobService = processJobService;
-        _serviceBusService = serviceBusService;
+        _messagingService = messagingService;
         _fileUploadOptions = fileUploadOptions.Value;
     }
 
@@ -166,7 +166,7 @@ public sealed class UploadFunctions
             }
 
             // Upload to Blob Storage using Managed Identity
-            BlobUploadResult result = await _blobStorageService.UploadBlobAsync(
+            UploadResult result = await _storageService.UploadAsync(
                 fileData.FileName,
                 fileData.Data,
                 fileData.ContentType);
@@ -208,7 +208,7 @@ public sealed class UploadFunctions
                 _logger.LogInformation("Process job created: {JobId}", jobId);
 
                 // Enqueue Service Bus message for new jobs only
-                await _serviceBusService.EnqueueJobAsync(
+                await _messagingService.EnqueueJobAsync(
                     jobId: jobId,
                     documentId: documentId,
                     correlationId: jobId.ToString()
@@ -281,7 +281,7 @@ public sealed class UploadFunctions
         if (success)
         {
             // Re-enqueue to Service Bus
-            // await _serviceBusService.EnqueueJobAsync(
+            // await _messagingService.EnqueueJobAsync(
             //     jobId: parsedJobId,
             //     documentId: /* you'll need to fetch this */,
             //     correlationId: parsedJobId.ToString()

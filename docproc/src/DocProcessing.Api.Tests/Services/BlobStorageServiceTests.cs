@@ -1,5 +1,4 @@
-using DocProcessing.Api.Configuration;
-using DocProcessing.Api.Services;
+using DocProcessing.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -43,7 +42,7 @@ public class BlobStorageServiceTests
 
     #endregion
 
-    #region ValidateConfiguration Tests (via UploadBlobAsync)
+    #region ValidateConfiguration Tests (via UploadAsync)
 
     [Fact]
     public async Task UploadBlobAsync_WithNoConnectionStringOrAccountName_ThrowsInvalidOperationException()
@@ -61,7 +60,7 @@ public class BlobStorageServiceTests
 
         // Act & Assert
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadBlobAsync("test.txt", stream));
+            async () => await service.UploadAsync("test.txt", stream));
 
         Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
     }
@@ -82,7 +81,7 @@ public class BlobStorageServiceTests
 
         // Act & Assert
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadBlobAsync("test.txt", stream));
+            async () => await service.UploadAsync("test.txt", stream));
 
         Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
     }
@@ -103,19 +102,19 @@ public class BlobStorageServiceTests
 
         // Act & Assert
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadBlobAsync("test.txt", stream));
+            async () => await service.UploadAsync("test.txt", stream));
 
         Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
     }
 
     #endregion
 
-    #region UploadBlobAsync Integration Tests
+    #region UploadAsync Integration Tests
 
-    // NOTE: The following tests demonstrate what should be tested for UploadBlobAsync.
+    // NOTE: The following tests demonstrate what should be tested for UploadAsync.
     // However, due to the current implementation where BlobServiceClient, BlobContainerClient,
     // and BlobClient are created within the method (sealed classes that cannot be easily mocked),
-    // true unit testing of UploadBlobAsync requires either:
+    // true unit testing of UploadAsync requires either:
     //
     // Recommended refactoring approaches:
     // 1. Inject BlobServiceClient as a dependency (with interface or factory pattern)
@@ -144,7 +143,7 @@ public class BlobStorageServiceTests
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes("test content"));
 
         // Act
-        BlobUploadResult result = await service.UploadBlobAsync("test.txt", stream, "text/plain");
+        UploadResult result = await service.UploadAsync("test.txt", stream, "text/plain");
 
         // Assert
         Assert.NotNull(result);
@@ -281,7 +280,7 @@ public class BlobStorageServiceTests
         string fileName = $"test-{Guid.NewGuid()}.txt";
 
         // Act
-        BlobUploadResult result = await service.UploadBlobAsync(fileName, stream, "text/plain");
+        UploadResult result = await service.UploadAsync(fileName, stream, "text/plain");
 
         // Assert
         Assert.NotNull(result);

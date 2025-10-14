@@ -1,5 +1,4 @@
-using DocProcessing.Api.Configuration;
-using DocProcessing.Api.Services;
+using DocProcessing.Infrastructure.MessageBroker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

@@ -1,7 +1,8 @@
-using DocProcessing.Api.Data;
-using DocProcessing.Api.Services;
+using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
+using DocProcessing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
@@ -9,7 +10,7 @@ namespace DocProcessing.Api.Tests.Services;
 
 public class DocumentServiceTests : IDisposable
 {
-    private readonly AppDbContext _dbContext;
+    private readonly ApplicationDbContext _dbContext;
     private readonly Mock<ILogger<DocumentService>> _loggerMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly DocumentService _service;
@@ -17,11 +18,11 @@ public class DocumentServiceTests : IDisposable
     public DocumentServiceTests()
     {
         // Create a unique database name for each test to ensure isolation
-        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+        DbContextOptions<ApplicationDbContext> options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new AppDbContext(options);
+        _dbContext = new ApplicationDbContext(options);
         _loggerMock = new Mock<ILogger<DocumentService>>();
         _timeProvider = new FakeTimeProvider();
         _service = new DocumentService(_dbContext, _loggerMock.Object, _timeProvider);
@@ -39,14 +40,14 @@ public class DocumentServiceTests : IDisposable
     public async Task CreateDocumentAsync_WithValidParameters_CreatesDocumentSuccessfully()
     {
         // Arrange
-        string fileName = "test.pdf";
-        string contentType = "application/pdf";
-        long sizeBytes = 1024;
-        string blobContainer = "documents";
-        string blobPath = "test/test.pdf";
-        string blobETag = "\"0x8D9A1B2C3D4E5F6\"";
+        const string fileName = "test.pdf";
+        const string contentType = "application/pdf";
+        const long sizeBytes = 1024;
+        const string blobContainer = "documents";
+        const string blobPath = "test/test.pdf";
+        const string blobETag = "\"0x8D9A1B2C3D4E5F6\"";
         byte[] sha256Hash = new byte[32];
-        string uploadedBy = "user@example.com";
+        const string uploadedBy = "user@example.com";
         Guid? tenantId = Guid.NewGuid();
 
         // Act
@@ -251,7 +252,8 @@ public class DocumentServiceTests : IDisposable
         string blobContainer = "documents";
         string blobPath = "new/new-document.pdf";
         string blobETag = "\"0x8D9A1B2C3D4E5F6\"";
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
         string uploadedBy = "user@example.com";
 
         // Act
@@ -278,7 +280,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_WhenDocumentExistsWithSameHash_ReturnsExistingDocument()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
         Guid tenantId = Guid.NewGuid();
 
         // Create an existing document
@@ -320,7 +323,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_WhenDocumentExistsButDeleted_CreatesNewDocument()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
         Guid tenantId = Guid.NewGuid();
 
         // Create and mark document as deleted
@@ -367,7 +371,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_WithDifferentTenants_CreatesNewDocument()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
         Guid tenant1 = Guid.NewGuid();
         Guid tenant2 = Guid.NewGuid();
 
@@ -412,7 +417,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_WithNullTenantId_HandlesCorrectly()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
 
         // Create document without tenant
         Guid existingDocumentId = await _service.CreateDocumentAsync(
@@ -445,7 +451,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_LogsExistingDocumentFound_WhenDocumentExists()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
 
         await _service.CreateDocumentAsync(
             "existing.pdf",
@@ -485,7 +492,8 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_LogsCreation_WhenCreatingNewDocument()
     {
         // Arrange
-        byte[] sha256Hash = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
 
         // Act
         await _service.GetOrCreateDocumentAsync(
@@ -513,8 +521,10 @@ public class DocumentServiceTests : IDisposable
     public async Task GetOrCreateDocumentAsync_WithDifferentHash_CreatesNewDocument()
     {
         // Arrange
-        byte[] sha256Hash1 = new byte[32] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
-        byte[] sha256Hash2 = new byte[32] { 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+        byte[] sha256Hash1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ];
+        byte[] sha256Hash2 = [32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+        ];
 
         // Create first document
         Guid document1Id = await _service.CreateDocumentAsync(

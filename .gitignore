@@ -143,3 +143,4 @@ docproc/knowledge-base/tools/adapters/claude/claude-kb.json
 docproc/src/api/appsettings.json
 CHANGE-LOG.md
 /.claude/agents
+CLAUDE.md

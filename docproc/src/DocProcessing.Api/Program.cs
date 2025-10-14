@@ -1,14 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DocProcessing.Api.Data;
-using DocProcessing.Api.Configuration;
-using DocProcessing.Api.Services;
+using DocProcessing.Application.Interfaces;
+using DocProcessing.Application.Services;
+using DocProcessing.Infrastructure;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 IHost host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
@@ -31,33 +29,12 @@ IHost host = new HostBuilder()
             options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
 
-        // Configure custom options
-        services.Configure<AzureStorageOptions>(
-            context.Configuration.GetSection(AzureStorageOptions.SectionName));
+        // Add infrastructure services (includes storage and messaging)
+        services.AddInfrastructure(context.Configuration);
 
-        services.Configure<FileUploadOptions>(
-            context.Configuration.GetSection(FileUploadOptions.SectionName));
-
-        services.Configure<ServiceBusOptions>(
-            context.Configuration.GetSection(ServiceBusOptions.SectionName));
-
-        // Register DbContext
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(
-                context.Configuration.GetConnectionString("DefaultConnection"),
-                sqlOptions => sqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(10),
-                    errorNumbersToAdd: null)));
-
-        // Register TimeProvider for dependency injection
-        services.AddSingleton(TimeProvider.System);
-
-        // Register services
-        services.AddScoped<IBlobStorageService, BlobStorageService>();
+        // Register application services
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IProcessJobService, ProcessJobService>();
-        services.AddSingleton<IServiceBusService, ServiceBusService>();
     })
     .Build();
 
@@ -68,30 +45,7 @@ bool applyMigrationsOnStartup = host.Services
 
 if (applyMigrationsOnStartup)
 {
-    using IServiceScope scope = host.Services.CreateScope();
-
-    AppDbContext dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    ILogger<Program> logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    IEnumerable<string> pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-
-    if (pendingMigrations.Any())
-    {
-        try
-        {
-            logger.LogInformation("Applying database migrations...");
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("Database migrations applied successfully");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occurred while applying database migrations");
-            throw;
-        }
-    }
-    else
-    {
-        logger.LogInformation("Database is up to date. No migrations to apply.");
-    }
+    await host.InitialiseDatabaseAsync();
 }
 
 host.Run();

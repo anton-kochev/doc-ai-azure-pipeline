@@ -1,6 +1,6 @@
-using DocProcessing.Api.Data;
-using DocProcessing.Api.Services;
+using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
+using DocProcessing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -9,7 +9,7 @@ namespace DocProcessing.Api.Tests.Services;
 
 public class ProcessJobServiceTests : IDisposable
 {
-    private readonly AppDbContext _dbContext;
+    private readonly ApplicationDbContext _dbContext;
     private readonly Mock<ILogger<ProcessJobService>> _loggerMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly ProcessJobService _service;
@@ -17,11 +17,11 @@ public class ProcessJobServiceTests : IDisposable
     public ProcessJobServiceTests()
     {
         // Create a unique database name for each test to ensure isolation
-        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+        DbContextOptions<ApplicationDbContext> options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new AppDbContext(options);
+        _dbContext = new ApplicationDbContext(options);
         _loggerMock = new Mock<ILogger<ProcessJobService>>();
         _timeProvider = new FakeTimeProvider();
         _service = new ProcessJobService(_dbContext, _loggerMock.Object, _timeProvider);
