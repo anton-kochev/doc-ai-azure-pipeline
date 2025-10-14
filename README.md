@@ -1,23 +1,52 @@
 # Document AI Azure Pipeline (docproc)
 
-A document processing pipeline built with .NET 8.0 and Angular 20.3, featuring Azure Blob Storage integration for file management and processing.
+A serverless document processing pipeline built with .NET 8.0 Azure Functions and Angular 20.3. The system provides a complete document ingestion, processing, and management solution leveraging Azure cloud services including Blob Storage, Service Bus, SQL Database, and Durable Functions for orchestration.
 
 ## Overview
 
 This project implements a microservices architecture for document AI processing with the following components:
 
-- **API Service** (`src/api/`) - ASP.NET Core 8.0 Web API with Azure Blob Storage integration
+- **API Service** (`src/DocProcessing.Api/`) - Azure Functions v4 API with Azure Blob Storage, Service Bus, and Entity Framework Core integration
+- **Worker Orchestrator** (`src/worker/orchestrator/Worker.Orchestrator/`) - Azure Durable Functions for document processing orchestration
 - **Client Application** (`src/client/receiver-app/`) - Angular 20.3 frontend with Material Design
-- **Worker Service** (`src/worker/`) - Background processing service (planned)
-- **Common Library** (`src/common/`) - Shared code and utilities (planned)
+- **Common Libraries** (`src/common/`)
+  - **DocProcessing.Domain** - Entity Framework Core domain models (Document, ProcessJob, ProfileCatalog)
+  - **DocProcessing.Contracts** - Shared contracts and DTOs for inter-service communication
+  - **DocProcessing.Application** - Application logic layer with validation and business rules
+- **Tools**
+  - **ServiceBusQueueInspector** - CLI tool for inspecting and monitoring Azure Service Bus queues
 
 ### Key Features
 
-- File upload with client-side Azure SAS-based uploads
-- Azure Blob Storage integration for document management
-- OpenAPI/Swagger documentation
-- Material Design theming with light/dark mode support
-- Dependency injection guidance and patterns
+- **Serverless Architecture** - Azure Functions for scalable, cost-effective compute
+- **Client-Side Upload** - SAS token-based direct upload to Azure Blob Storage
+- **Asynchronous Processing** - Service Bus queue-based document processing
+- **Durable Orchestration** - Stateful workflows with Azure Durable Functions
+- **Clean Architecture** - Domain-driven design with clear separation of concerns
+- **Entity Framework Core** - Type-safe data access with SQL Server
+- **Material Design UI** - Modern Angular application with light/dark mode support
+- **Local Development** - Full emulator support (Azurite, Service Bus)
+- **CI/CD Pipeline** - Automated deployment via GitHub Actions
+- **Monitoring Tools** - ServiceBusQueueInspector CLI for queue inspection
+
+### How It Works
+
+1. **Document Upload**
+   - User uploads document via Angular client
+   - Client requests SAS token from API
+   - Document uploaded directly to Azure Blob Storage
+   - Metadata stored in SQL Server via Entity Framework Core
+
+2. **Document Processing**
+   - API publishes message to Service Bus queue
+   - Worker Orchestrator (Durable Functions) picks up message
+   - Document processing orchestrated through stateful workflow
+   - Job status tracked in SQL Server
+
+3. **Status Tracking**
+   - ProcessJob entity tracks processing status
+   - Profile catalog manages processing profiles
+   - Real-time status updates available via API
 
 ## Prerequisites
 
@@ -113,17 +142,19 @@ For non-local environments, create or update `src/api/appsettings.json`:
 ### 4. Run the API
 
 ```bash
+# From the docproc directory
+cd docproc
+
 # Build the solution
 dotnet build docproc.sln
 
 # Run the API with hot reload
-dotnet watch --project src/api/api.csproj
+dotnet watch --project src/DocProcessing.Api/DocProcessing.Api.csproj
 ```
 
 The API will be available at:
-- HTTP: `http://localhost:8080`
-- HTTPS: `https://localhost:8081`
-- Swagger UI: `http://localhost:8080/swagger` (in Development mode)
+- HTTP: `http://localhost:7071`
+- API endpoints: `http://localhost:7071/api/*`
 
 ### 5. Run the Angular Client
 
@@ -140,32 +171,49 @@ The client will be available at `http://localhost:4200`
 ```
 docproc/
 ├── src/
-│   ├── api/                    # ASP.NET Core Web API
-│   │   ├── Configuration/      # Configuration models
-│   │   ├── Endpoints/          # API endpoints
-│   │   ├── Services/           # Business logic services
-│   │   ├── Program.cs          # Application entry point
-│   │   └── Dockerfile          # Docker configuration
-│   ├── client/
-│   │   └── receiver-app/       # Angular application
-│   ├── common/                 # Shared library (planned)
-│   └── worker/                 # Background worker (planned)
-├── tests/                      # Test projects
-├── docs/                       # Documentation
-├── infra/                      # Infrastructure as Code
-├── knowledge-base/             # Project knowledge base (v1.1.0)
-│   ├── core.md                # KB index and versioning
-│   ├── README.md              # KB overview
-│   ├── CONTRIBUTING.md        # KB contribution guide
-│   ├── code-style/            # Style guides by framework
-│   │   ├── dotnet/            # C#/.NET guides
-│   │   ├── angular/           # Angular guides
-│   │   └── typescript/        # TypeScript guides
-│   ├── recipes/               # Reusable patterns
-│   ├── tools/                 # KB transformation tools
-│   └── tests/                 # KB validation
-├── docproc.sln                # Solution file
-└── global.json                # .NET SDK version
+│   ├── DocProcessing.Api/           # Azure Functions v4 API
+│   │   ├── Configuration/           # Configuration models (AzureStorageOptions, ServiceBusOptions, etc.)
+│   │   ├── Data/                    # EF Core DbContext
+│   │   ├── Functions/               # Azure Functions (UploadFunctions)
+│   │   ├── Services/                # Business logic services (BlobStorage, ServiceBus, Document, ProcessJob)
+│   │   ├── Migrations/              # EF Core migrations
+│   │   ├── Program.cs               # Application entry point
+│   │   ├── host.json                # Azure Functions host configuration
+│   │   └── Dockerfile               # Docker configuration
+│   ├── DocProcessing.Api.Tests/     # Unit tests for API
+│   │   └── Services/                # Service layer tests
+│   ├── common/                      # Shared libraries
+│   │   ├── DocProcessing.Domain/    # Domain entities (Document, ProcessJob, ProfileCatalog)
+│   │   ├── DocProcessing.Contracts/ # Shared contracts (ProcessDocumentMessage)
+│   │   └── DocProcessing.Application/ # Application logic (MessageValidator)
+│   ├── worker/
+│   │   └── orchestrator/
+│   │       └── Worker.Orchestrator/ # Azure Durable Functions orchestrator
+│   │           └── Functions/       # Durable Functions (DocumentIngestionTrigger, DocumentProcessingOrchestrator)
+│   └── client/
+│       └── receiver-app/            # Angular 20.3 application
+├── ServiceBusQueueInspector/        # CLI tool for Service Bus queue inspection
+├── ServiceBusQueueInspector.Tests/  # Tests for the inspector tool
+├── docs/                            # Documentation
+├── infra/                           # Infrastructure as Code
+├── knowledge-base/                  # Project knowledge base (v1.1.0)
+│   ├── core.md                     # KB index and versioning
+│   ├── README.md                   # KB overview
+│   ├── CONTRIBUTING.md             # KB contribution guide
+│   ├── code-style/                 # Style guides by framework
+│   │   ├── dotnet/                 # C#/.NET guides
+│   │   ├── angular/                # Angular guides
+│   │   └── typescript/             # TypeScript guides
+│   ├── recipes/                    # Reusable patterns
+│   ├── tools/                      # KB transformation tools
+│   └── tests/                      # KB validation
+├── .github/
+│   └── workflows/                   # CI/CD pipelines
+│       ├── deploy-api-functions.yml              # Deploy API to Azure Functions
+│       ├── deploy-worker-orchestrator-functions.yml # Deploy orchestrator worker
+│       └── azure-static-web-apps-receiver.yml    # Deploy Angular client
+├── docproc.sln                     # Solution file
+└── global.json                     # .NET SDK version
 ```
 
 ## Development
@@ -173,14 +221,26 @@ docproc/
 ### API Development
 
 ```bash
+# From the docproc directory
+cd docproc
+
 # Build in Release mode
 dotnet build docproc.sln -c Release
 
-# Run without watch
-dotnet run --project src/api/api.csproj
+# Run API without watch
+dotnet run --project src/DocProcessing.Api/DocProcessing.Api.csproj
 
-# Run tests (when available)
+# Run Worker Orchestrator
+dotnet run --project src/worker/orchestrator/Worker.Orchestrator/Worker.Orchestrator.csproj
+
+# Run tests
 dotnet test
+
+# Run specific test project
+dotnet test src/DocProcessing.Api.Tests/DocProcessing.Api.Tests.csproj
+
+# Run ServiceBusQueueInspector tool
+dotnet run --project ServiceBusQueueInspector/ServiceBusQueueInspector.csproj
 ```
 
 ### Client Development
@@ -210,14 +270,23 @@ npm run format
 ### Docker
 
 ```bash
-# Build Docker image (from docproc directory)
-docker build -f src/api/Dockerfile -t docproc-api .
+# Build API Docker image (from docproc directory)
+cd docproc
+docker build -f src/DocProcessing.Api/Dockerfile -t docproc-api .
 
-# Run container
-docker run -p 8080:8080 -p 8081:8081 docproc-api
+# Run API container
+docker run -p 7071:7071 docproc-api
+
+# Run local emulators (Azurite + Service Bus)
+docker-compose up -d
+
+# Stop emulators
+docker-compose down
 ```
 
 ## API Endpoints
+
+The API is built with Azure Functions and provides the following endpoints:
 
 ### Upload Endpoints
 
@@ -230,15 +299,21 @@ docker run -p 8080:8080 -p 8081:8081 docproc-api
   - Form field: `file`
   - Response: `{ "blobUrl": "string", "fileName": "string" }`
 
-Full API documentation is available at `/swagger` when running in Development mode.
+The API integrates with:
+- **Azure Blob Storage** for document storage
+- **Azure Service Bus** for asynchronous message processing
+- **SQL Server** via Entity Framework Core for metadata persistence
 
 ## Technology Stack
 
 ### Backend
-- .NET 8.0
-- ASP.NET Core Minimal APIs
-- Azure Storage Blobs SDK
-- Swashbuckle (OpenAPI/Swagger)
+- **.NET 8.0** - Target framework for all services
+- **Azure Functions v4** - Serverless compute platform for API and orchestration
+- **Azure Durable Functions** - Stateful orchestration workflows
+- **Entity Framework Core 9.0** - ORM for data access with SQL Server
+- **Azure Storage Blobs SDK** - Document storage
+- **Azure Service Bus SDK** - Asynchronous messaging
+- **Azure Identity** - Authentication and authorization
 
 ### Frontend
 - Angular 20.3
@@ -248,36 +323,57 @@ Full API documentation is available at `/swagger` when running in Development mo
 - Karma & Jasmine (testing)
 - ESLint & Prettier (code quality)
 
+### Architecture
+- **Clean Architecture** - Separation of concerns with Domain, Application, and Infrastructure layers
+- **CQRS Pattern** - Command Query Responsibility Segregation where applicable
+- **Message-Based Architecture** - Asynchronous processing via Service Bus
+
 ### Infrastructure
-- Docker (Linux containers)
-- Azure Blob Storage
-- Azure Service Bus
-- Azurite (Azure Storage emulator)
-- Azure Service Bus Emulator
+- **Docker** (Linux containers)
+- **Azure Blob Storage** - Document storage
+- **Azure Service Bus** - Message queue for document processing
+- **Azure SQL Server** - Relational database for metadata
+- **Azurite** - Azure Storage emulator for local development
+- **Azure Service Bus Emulator** - Local message queue for development
 
 ## Configuration
 
 ### API Configuration (`appsettings.json`)
 
+The API uses Azure Functions configuration. Key settings include:
+
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
+  "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+  "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
   "AzureStorage": {
     "ConnectionString": "",
-    "ContainerName": ""
+    "ContainerName": "uploads"
   },
   "ServiceBus": {
-    "ConnectionString": "",
-    "Namespace": "",
+    "FullyQualifiedNamespace": "",
     "QueueName": "documents.process"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=DocProcessing;..."
   }
 }
+```
+
+**Note:** For local development, connection strings are configured in `local.settings.json` (not committed to source control).
+
+### Entity Framework Migrations
+
+```bash
+# Add new migration
+cd docproc/src/DocProcessing.Api
+dotnet ef migrations add MigrationName
+
+# Update database
+dotnet ef database update
+
+# Remove last migration
+dotnet ef migrations remove
 ```
 
 ### Angular Configuration
@@ -355,13 +451,38 @@ This will regenerate the Claude AI agent configuration and prompt artifacts.
 
 [Add license information]
 
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+### Workflows
+
+1. **deploy-api-functions.yml** - Deploys the API to Azure Functions
+   - Triggers on pushes to `main` branch affecting API code
+   - Builds and publishes the DocProcessing.Api project
+   - Deploys to Azure Functions app
+
+2. **deploy-worker-orchestrator-functions.yml** - Deploys the orchestrator worker
+   - Triggers on pushes to `main` branch affecting orchestrator code
+   - Builds and publishes the Worker.Orchestrator project
+   - Deploys to Azure Functions app
+
+3. **azure-static-web-apps-receiver.yml** - Deploys the Angular client
+   - Triggers on pushes to `main` branch affecting client code
+   - Builds the Angular application
+   - Deploys to Azure Static Web Apps
+
 ## Recent Updates
 
+- ✅ **Clean Architecture** - Implemented Domain, Contracts, and Application layers
+- ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions
+- ✅ **Azure Durable Functions** - Added orchestration worker for document processing
+- ✅ **Entity Framework Core 9.0** - Added SQL Server integration with migrations
+- ✅ **CI/CD Pipelines** - GitHub Actions workflows for automated deployment
+- ✅ **ServiceBusQueueInspector** - CLI tool for queue monitoring
+- ✅ **Unit Tests** - Test coverage for API services
 - ✅ Azure Service Bus emulator support for local development
 - ✅ Azurite (Azure Storage emulator) integration with docker-compose
 - ✅ Knowledge Base with comprehensive .NET/C# code style guides
 - ✅ Client-side file upload with Azure SAS-based uploads
-- ✅ Azure Blob Storage support with SAS URL generation
 - ✅ Material theming with light/dark themes
-- ✅ OpenAPI/Swagger documentation
-- ✅ Dependency injection guidance

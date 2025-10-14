@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Azure.Messaging.ServiceBus;
+using DocProcessing.Application.Validation;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
-using Worker.Orchestrator.Models;
-using Worker.Orchestrator.Validation;
+using DocProcessing.Contracts.Models;
 
 namespace Worker.Orchestrator.Functions;
 
