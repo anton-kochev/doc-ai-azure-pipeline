@@ -7,23 +7,28 @@ A serverless document processing pipeline built with .NET 8.0 Azure Functions an
 This project implements a microservices architecture for document AI processing with the following components:
 
 - **API Service** (`src/DocProcessing.Api/`) - Azure Functions v4 API with Azure Blob Storage, Service Bus, and Entity Framework Core integration
-- **Worker Orchestrator** (`src/worker/orchestrator/Worker.Orchestrator/`) - Azure Durable Functions for document processing orchestration
+- **Worker Orchestrator** (`src/worker/orchestrator/DocProcessing.Orchestrator/`) - Azure Durable Functions for document processing orchestration
 - **Client Application** (`src/client/receiver-app/`) - Angular 20.3 frontend with Material Design
 - **Common Libraries** (`src/common/`)
   - **DocProcessing.Domain** - Entity Framework Core domain models (Document, ProcessJob, ProfileCatalog)
   - **DocProcessing.Contracts** - Shared contracts and DTOs for inter-service communication
-  - **DocProcessing.Application** - Application logic layer with validation and business rules
+  - **DocProcessing.Application** - Application services (DocumentService, ProcessJobService), pipeline stage contracts, and business logic
+  - **DocProcessing.Infrastructure** - Infrastructure implementations for storage (BlobStorageService), messaging (ServiceBusService), and database (ApplicationDbContext)
 - **Tools**
   - **ServiceBusQueueInspector** - CLI tool for inspecting and monitoring Azure Service Bus queues
 
 ### Key Features
 
 - **Serverless Architecture** - Azure Functions for scalable, cost-effective compute
-- **Client-Side Upload** - SAS token-based direct upload to Azure Blob Storage
+- **Server-Side Upload** - Direct file upload via multipart/form-data with validation
 - **Asynchronous Processing** - Service Bus queue-based document processing
 - **Durable Orchestration** - Stateful workflows with Azure Durable Functions
-- **Clean Architecture** - Domain-driven design with clear separation of concerns
-- **Entity Framework Core** - Type-safe data access with SQL Server
+- **Clean Architecture** - Domain-driven design with clear separation of concerns (Domain, Application, Infrastructure)
+- **Entity Framework Core** - Type-safe data access with SQL Server and automatic migrations
+- **Managed Identity** - Secure Azure service authentication without connection strings
+- **Idempotency** - SHA256 hash-based deduplication prevents duplicate processing
+- **Retry Mechanism** - Failed jobs can be retried via API endpoint
+- **Pipeline Stages** - Standardized stage contracts for document processing workflow
 - **Material Design UI** - Modern Angular application with light/dark mode support
 - **Local Development** - Full emulator support (Azurite, Service Bus)
 - **CI/CD Pipeline** - Automated deployment via GitHub Actions
@@ -32,21 +37,23 @@ This project implements a microservices architecture for document AI processing 
 ### How It Works
 
 1. **Document Upload**
-   - User uploads document via Angular client
-   - Client requests SAS token from API
-   - Document uploaded directly to Azure Blob Storage
-   - Metadata stored in SQL Server via Entity Framework Core
+   - User uploads document via Angular client (multipart/form-data)
+   - API validates file type, size, and calculates SHA256 hash
+   - Document uploaded to Azure Blob Storage using Managed Identity
+   - Document and ProcessJob records created in SQL Server (idempotent based on SHA256)
+   - Job message enqueued to Service Bus for processing
 
 2. **Document Processing**
-   - API publishes message to Service Bus queue
-   - Worker Orchestrator (Durable Functions) picks up message
-   - Document processing orchestrated through stateful workflow
-   - Job status tracked in SQL Server
+   - Worker Orchestrator (Durable Functions) picks up message from Service Bus
+   - Document processing orchestrated through standardized pipeline stages
+   - Each stage (OCR, Preprocess, Embed, Extract, Validate, Persist, Notify) tracked in ProcessJob
+   - Job status updated in SQL Server (Pending → Processing → Completed/Failed/ManualReview)
 
-3. **Status Tracking**
-   - ProcessJob entity tracks processing status
-   - Profile catalog manages processing profiles
-   - Real-time status updates available via API
+3. **Status Tracking & Retry**
+   - ProcessJob entity tracks processing status and current stage
+   - Failed jobs can be retried via `/api/jobs/{jobId}/retry` endpoint
+   - Profile catalog manages extraction profiles
+   - Application Insights provides telemetry and distributed tracing
 
 ## Prerequisites
 
@@ -148,7 +155,11 @@ cd docproc
 # Build the solution
 dotnet build docproc.sln
 
-# Run the API with hot reload
+# Run the API with Azure Functions runtime
+cd src/DocProcessing.Api
+func start
+
+# Or run with hot reload using dotnet watch (from docproc directory)
 dotnet watch --project src/DocProcessing.Api/DocProcessing.Api.csproj
 ```
 
@@ -156,7 +167,14 @@ The API will be available at:
 - HTTP: `http://localhost:7071`
 - API endpoints: `http://localhost:7071/api/*`
 
-### 5. Run the Angular Client
+### 5a. Run the Worker Orchestrator
+
+```bash
+cd src/worker/orchestrator/DocProcessing.Orchestrator
+func start
+```
+
+### 6. Run the Angular Client
 
 ```bash
 cd src/client/receiver-app
@@ -172,24 +190,30 @@ The client will be available at `http://localhost:4200`
 docproc/
 ├── src/
 │   ├── DocProcessing.Api/           # Azure Functions v4 API
-│   │   ├── Configuration/           # Configuration models (AzureStorageOptions, ServiceBusOptions, etc.)
-│   │   ├── Data/                    # EF Core DbContext
-│   │   ├── Functions/               # Azure Functions (UploadFunctions)
-│   │   ├── Services/                # Business logic services (BlobStorage, ServiceBus, Document, ProcessJob)
-│   │   ├── Migrations/              # EF Core migrations
-│   │   ├── Program.cs               # Application entry point
+│   │   ├── Functions/               # Azure Functions (UploadFunctions with Upload and RetryJob endpoints)
+│   │   ├── Program.cs               # Application entry point with DI configuration
 │   │   ├── host.json                # Azure Functions host configuration
 │   │   └── Dockerfile               # Docker configuration
 │   ├── DocProcessing.Api.Tests/     # Unit tests for API
 │   │   └── Services/                # Service layer tests
-│   ├── common/                      # Shared libraries
+│   ├── common/                      # Shared libraries (Clean Architecture layers)
 │   │   ├── DocProcessing.Domain/    # Domain entities (Document, ProcessJob, ProfileCatalog)
 │   │   ├── DocProcessing.Contracts/ # Shared contracts (ProcessDocumentMessage)
-│   │   └── DocProcessing.Application/ # Application logic (MessageValidator)
+│   │   ├── DocProcessing.Application/ # Application services and business logic
+│   │   │   ├── Services/            # DocumentService, ProcessJobService
+│   │   │   ├── Pipeline/            # Pipeline stage contracts (IJobStageActivity)
+│   │   │   ├── Interfaces/          # Service interfaces
+│   │   │   └── Validation/          # Validation logic
+│   │   └── DocProcessing.Infrastructure/ # Infrastructure implementations
+│   │       ├── Storage/             # BlobStorageService with Managed Identity
+│   │       ├── MessageBroker/       # ServiceBusService with Managed Identity
+│   │       ├── FileUpload/          # File upload configuration and options
+│   │       ├── ApplicationDbContext.cs # EF Core DbContext
+│   │       └── Migrations/          # EF Core migrations
 │   ├── worker/
 │   │   └── orchestrator/
-│   │       └── Worker.Orchestrator/ # Azure Durable Functions orchestrator
-│   │           └── Functions/       # Durable Functions (DocumentIngestionTrigger, DocumentProcessingOrchestrator)
+│   │       └── DocProcessing.Orchestrator/ # Azure Durable Functions orchestrator
+│   │           └── Functions/       # Durable Functions for workflow orchestration
 │   └── client/
 │       └── receiver-app/            # Angular 20.3 application
 ├── ServiceBusQueueInspector/        # CLI tool for Service Bus queue inspection
@@ -231,7 +255,8 @@ dotnet build docproc.sln -c Release
 dotnet run --project src/DocProcessing.Api/DocProcessing.Api.csproj
 
 # Run Worker Orchestrator
-dotnet run --project src/worker/orchestrator/Worker.Orchestrator/Worker.Orchestrator.csproj
+cd src/worker/orchestrator/DocProcessing.Orchestrator
+func start
 
 # Run tests
 dotnet test
@@ -288,17 +313,50 @@ docker-compose down
 
 The API is built with Azure Functions and provides the following endpoints:
 
-### Upload Endpoints
+### Document Upload
 
-- `POST /api/upload` - Server-side file upload
-  - Content-Type: `multipart/form-data`
-  - Form field: `file`
-  - Response: `{ "blobUrl": "string", "fileName": "string" }`
+- `POST /api/upload` - Server-side file upload with validation and idempotency
+  - **Content-Type**: `multipart/form-data`
+  - **Form fields**:
+    - `file` (required) - The document file to upload
+    - `extractionProfile` (optional) - Profile name for document extraction (e.g., "invoice", "contract")
+    - `tenantId` (optional) - GUID for multi-tenant scenarios
+  - **Validation**: File type, size, and SHA256 hash calculation
+  - **Response** (202 Accepted):
+    ```json
+    {
+      "jobId": "guid",
+      "documentId": "guid",
+      "isNewJob": true,
+      "isNewDocument": true,
+      "extractionProfile": "invoice",
+      "blobUrl": "https://...",
+      "fileName": "document.pdf",
+      "contentType": "application/pdf",
+      "fileSizeBytes": 123456
+    }
+    ```
+
+### Job Management
+
+- `POST /api/jobs/{jobId}/retry` - Retry a failed job
+  - **Path parameter**: `jobId` (GUID)
+  - **Response** (200 OK):
+    ```json
+    {
+      "message": "Job re-queued for retry",
+      "jobId": "guid"
+    }
+    ```
+  - **Error responses**:
+    - 400 Bad Request - Invalid job ID format
+    - 404 Not Found - Job not found or not in Failed status
 
 The API integrates with:
-- **Azure Blob Storage** for document storage
-- **Azure Service Bus** for asynchronous message processing
-- **SQL Server** via Entity Framework Core for metadata persistence
+- **Azure Blob Storage** - Document storage with Managed Identity authentication
+- **Azure Service Bus** - Asynchronous message processing with Managed Identity
+- **SQL Server** - Metadata persistence via Entity Framework Core with automatic migrations
+- **Application Insights** - Distributed tracing and telemetry
 
 ## Technology Stack
 
@@ -319,10 +377,14 @@ The API integrates with:
 - Karma & Jasmine (testing)
 - ESLint & Prettier (code quality)
 
-### Architecture
+### Architecture & Patterns
 - **Clean Architecture** - Separation of concerns with Domain, Application, and Infrastructure layers
-- **CQRS Pattern** - Command Query Responsibility Segregation where applicable
+- **Domain-Driven Design** - Domain entities with EF Core for persistence
+- **Pipeline Pattern** - Standardized stage contracts (IJobStageActivity) for document processing workflow
 - **Message-Based Architecture** - Asynchronous processing via Service Bus
+- **Idempotency** - SHA256 hash-based deduplication for documents and jobs
+- **Retry Pattern** - Failed jobs can be retried via API endpoint
+- **Managed Identity** - Secure Azure service authentication without connection strings
 
 ### Infrastructure
 - **Docker** (Linux containers)
@@ -336,27 +398,44 @@ The API integrates with:
 
 ### API Configuration (`appsettings.json`)
 
-The API uses Azure Functions configuration. Key settings include:
+The API uses Azure Functions configuration with Managed Identity support. Key settings include:
 
 ```json
 {
-  "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-  "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
   "AzureStorage": {
-    "ConnectionString": "",
-    "ContainerName": "uploads"
+    "AccountName": "your-storage-account",
+    "ContainerName": "uploads",
+    "UseManagedIdentity": true
   },
   "ServiceBus": {
-    "FullyQualifiedNamespace": "",
-    "QueueName": "documents.process"
+    "FullyQualifiedNamespace": "your-namespace.servicebus.windows.net",
+    "QueueName": "documents.process",
+    "UseManagedIdentity": true
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=DocProcessing;..."
+    "DefaultConnection": "Server=...;Database=DocProcessing;..."
+  },
+  "FileUpload": {
+    "MaxFileSizeMB": 10,
+    "AllowedFileTypes": ["application/pdf", "image/jpeg", "image/png"]
+  },
+  "Database": {
+    "AutoApplyMigrations": true
+  },
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=..."
   }
 }
 ```
 
-**Note:** For local development, connection strings are configured in `local.settings.json` (not committed to source control).
+**Key Configuration Sections:**
+- **AzureStorage** - Blob storage with Managed Identity (or ConnectionString for local dev)
+- **ServiceBus** - Message queue with Managed Identity (or ConnectionString for local dev)
+- **FileUpload** - File validation settings (max size, allowed types)
+- **Database** - EF Core migration settings
+- **ApplicationInsights** - Telemetry and logging
+
+**Note:** For local development, use `local.settings.json` (not committed to source control) or `appsettings.Development.json` with connection strings for emulators.
 
 ### Entity Framework Migrations
 
@@ -470,15 +549,23 @@ The project uses GitHub Actions for continuous integration and deployment:
 
 ## Recent Updates
 
-- ✅ **Clean Architecture** - Implemented Domain, Contracts, and Application layers
-- ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions
-- ✅ **Azure Durable Functions** - Added orchestration worker for document processing
-- ✅ **Entity Framework Core 9.0** - Added SQL Server integration with migrations
+### Latest (October 2024)
+- ✅ **Infrastructure Layer** - Refactored to shared Infrastructure layer with BlobStorageService and ServiceBusService
+- ✅ **Managed Identity** - Added Managed Identity support for Azure Storage and Service Bus authentication
+- ✅ **Retry Mechanism** - Implemented RetryJob API endpoint for failed job recovery
+- ✅ **Pipeline Stages** - Added standardized pipeline stage contracts (IJobStageActivity) and execution context
+- ✅ **Application Services** - Moved DocumentService and ProcessJobService to Application layer
+- ✅ **Idempotency** - SHA256 hash-based deduplication for documents and jobs
+- ✅ **Database Migrations** - Automatic EF Core migrations with configurable auto-apply
+
+### Previous Updates
+- ✅ **Clean Architecture** - Implemented Domain, Contracts, Application, and Infrastructure layers
+- ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions (.NET 8 isolated)
+- ✅ **Azure Durable Functions** - Added orchestration worker (DocProcessing.Orchestrator)
+- ✅ **Entity Framework Core 9.0** - SQL Server integration with migrations
 - ✅ **CI/CD Pipelines** - GitHub Actions workflows for automated deployment
 - ✅ **ServiceBusQueueInspector** - CLI tool for queue monitoring
 - ✅ **Unit Tests** - Test coverage for API services
-- ✅ Azure Service Bus emulator support for local development
-- ✅ Azurite (Azure Storage emulator) integration with docker-compose
-- ✅ Knowledge Base with comprehensive .NET/C# code style guides
-- ✅ Client-side file upload with Azure SAS-based uploads
-- ✅ Material theming with light/dark themes
+- ✅ **Local Development** - Azure Service Bus emulator and Azurite integration
+- ✅ **Knowledge Base** - Comprehensive .NET/C# code style guides (v1.1.0)
+- ✅ **Angular Client** - Material Design with light/dark themes (v20.3)
