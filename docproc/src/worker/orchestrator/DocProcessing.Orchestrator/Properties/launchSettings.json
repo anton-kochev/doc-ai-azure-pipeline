@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Worker.Orchestrator": {
+    "Orchestrator": {
       "commandName": "Project",
       "commandLineArgs": "--port 7116",
       "launchBrowser": false

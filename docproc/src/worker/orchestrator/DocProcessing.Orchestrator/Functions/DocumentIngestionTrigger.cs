@@ -6,7 +6,7 @@ using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using DocProcessing.Contracts.Models;
 
-namespace Worker.Orchestrator.Functions;
+namespace DocProcessing.Orchestrator.Functions;
 
 /// <summary>
 /// Azure Function that listens to Service Bus queue for document processing requests

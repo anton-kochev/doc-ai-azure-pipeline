@@ -3,7 +3,7 @@ using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using DocProcessing.Contracts.Models;
 
-namespace Worker.Orchestrator.Functions;
+namespace DocProcessing.Orchestrator.Functions;
 
 /// <summary>
 /// Durable orchestrator for document processing workflow.

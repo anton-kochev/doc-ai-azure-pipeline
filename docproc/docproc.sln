@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 #
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocProcessing.Api", "src\DocProcessing.Api\DocProcessing.Api.csproj", "{C6BC665D-F3E1-4ADF-8F1F-81F3159EEE77}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Worker.Orchestrator", "src\worker\orchestrator\Worker.Orchestrator\Worker.Orchestrator.csproj", "{02488C20-B4BD-4A59-B725-B63A9EF518DD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocProcessing.Orchestrator", "src\worker\orchestrator\DocProcessing.Orchestrator\DocProcessing.Orchestrator.csproj", "{02488C20-B4BD-4A59-B725-B63A9EF518DD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceBusQueueInspector", "ServiceBusQueueInspector\ServiceBusQueueInspector.csproj", "{9407E78C-C4E4-439C-9106-4D88DFF0686C}"
 EndProject

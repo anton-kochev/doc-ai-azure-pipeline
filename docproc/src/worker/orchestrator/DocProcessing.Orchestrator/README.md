@@ -1,4 +1,4 @@
-# Worker.Orchestrator - Durable Functions App
+# DocProcessing.Orchestrator - Durable Functions App
 
 Azure Durable Functions app for orchestrating document processing workflows, built with .NET 8 isolated worker.
 
