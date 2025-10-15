@@ -30,7 +30,9 @@ public sealed class ProcessJobService : IProcessJobService
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync([jobId], cancellationToken);
+        ProcessJob? job = await _dbContext.ProcessJobs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.JobId == jobId, cancellationToken);
 
         if (job == null)
         {
@@ -45,6 +47,7 @@ public sealed class ProcessJobService : IProcessJobService
             return false;
         }
 
+        _dbContext.ProcessJobs.Attach(job);
         job.Status = ProcessJobStatus.Pending;
         job.Stage = ProcessJobStage.Uploaded;
         job.LastErrorCode = null;
@@ -75,8 +78,7 @@ public sealed class ProcessJobService : IProcessJobService
         string combined = sb.ToString();
 
         // Hash the combined string to create a consistent, fixed-length key
-        using SHA256 sha256 = SHA256.Create();
-        byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
 
         // Convert to base64 for a shorter representation (44 chars vs 64 hex chars)
         // Remove padding characters to make it URL-safe
@@ -149,70 +151,68 @@ public sealed class ProcessJobService : IProcessJobService
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
-
-        if (job == null)
-        {
-            _logger.LogWarning("Cannot start processing: Job not found. JobId={JobId}", jobId);
-            return false;
-        }
-
-        if (job.Status != ProcessJobStatus.Pending)
-        {
-            _logger.LogWarning(
-                "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}",
-                jobId,
-                job.Status);
-            return false;
-        }
-
-        job.Status = ProcessJobStatus.Processing;
-        job.StartedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
-        job.Attempts++;
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}",
+        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
             jobId,
-            job.Attempts);
+            job =>
+            {
+                if (job.Status != ProcessJobStatus.Pending)
+                {
+                    _logger.LogWarning(
+                        "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}",
+                        jobId,
+                        job.Status);
+                    throw new InvalidOperationException($"Job is not in Pending status (current={job.Status})");
+                }
+                job.Status = ProcessJobStatus.Processing;
+                job.StartedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                job.Attempts++;
+            },
+            "StartProcessing",
+            cancellationToken);
 
-        return true;
+        if (success)
+        {
+            _logger.LogInformation(
+                "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}",
+                updatedJob!.JobId,
+                updatedJob.Attempts);
+        }
+        
+        return success;
     }
 
     /// <inheritdoc />
     public async Task<bool> CompleteJobAsync(
-        Guid jobId, 
+        Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
-
-        if (job == null)
-        {
-            _logger.LogWarning("Cannot complete job: Job not found. JobId={JobId}", jobId);
-            return false;
-        }
-
-        if (job.Status != ProcessJobStatus.Processing)
-        {
-            _logger.LogWarning(
-                "Cannot complete job: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
-                jobId,
-                job.Status);
-            return false;
-        }
-
-        job.Status = ProcessJobStatus.Completed;
-        job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Job completed successfully. JobId={JobId}, Duration={Duration}",
+        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
             jobId,
-            job.CompletedAtUtc - job.StartedAtUtc);
-
-        return true;
+            job =>
+            {
+                if (job.Status != ProcessJobStatus.Processing)
+                {
+                    _logger.LogWarning(
+                        "Cannot complete: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
+                        jobId,
+                        job.Status);
+                    throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
+                }
+                job.Status = ProcessJobStatus.Completed;
+                job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+            },
+            "Complete",
+            cancellationToken);
+        
+        if (success)
+        {
+            _logger.LogInformation(
+                "Job completed successfully. JobId={JobId}, Duration={Duration}",
+                updatedJob!.JobId,
+                updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
+        }
+        
+        return success;
     }
 
     /// <inheritdoc />
@@ -222,36 +222,102 @@ public sealed class ProcessJobService : IProcessJobService
         string? errorMessage = null,
         CancellationToken cancellationToken = default)
     {
-        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
-
-        if (job == null)
-        {
-            _logger.LogWarning("Cannot fail job: Job not found. JobId={JobId}", jobId);
-            return false;
-        }
-
-        if (job.Status != ProcessJobStatus.Processing)
-        {
-            _logger.LogWarning(
-                "Cannot fail job: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
-                jobId,
-                job.Status);
-            return false;
-        }
-
-        job.Status = ProcessJobStatus.Failed;
-        job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
-        job.LastErrorCode = errorCode;
-        job.LastErrorMessage = errorMessage;
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogError(
-            "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}",
+        (bool success, _) = await TryUpdateJobAsync(
             jobId,
-            errorCode,
-            errorMessage);
-
-        return true;
+            job =>
+            {
+                if (job.Status != ProcessJobStatus.Processing)
+                {
+                    _logger.LogWarning(
+                        "Cannot fail: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
+                        jobId,
+                        job.Status);
+                    throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
+                }
+                job.Status = ProcessJobStatus.Failed;
+                job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                job.LastErrorCode = errorCode;
+                job.LastErrorMessage = errorMessage;
+            },
+            "Fail",
+            cancellationToken);
+        
+        if (success)
+        {
+            _logger.LogError(
+                "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}",
+                jobId,
+                errorCode,
+                errorMessage);
+        }
+        
+        return success;
     }
+
+    private async Task<(bool Success, ProcessJob? Job)> TryUpdateJobAsync(
+        Guid jobId,
+        Action<ProcessJob> updateAction,
+        string actionName,
+        CancellationToken cancellationToken)
+    {
+        const int maxRetries = 3;
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            ProcessJob? job = await _dbContext.ProcessJobs.FindAsync([jobId], cancellationToken);
+
+            if (job == null)
+            {
+                _logger.LogWarning("{Action}: Cannot update job. Job not found. JobId={JobId}", actionName, jobId);
+                return (false, null);
+            }
+
+            try
+            {
+                updateAction(job);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                // Detach the entity after successful save to prevent tracking conflicts in subsequent operations
+                _dbContext.Entry(job).State = EntityState.Detached;
+
+                return (Success: true, Job: job);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "{Action}: Invalid operation when updating job. JobId={JobId}, Message={Message}",
+                    actionName,
+                    job.JobId,
+                    ex.Message);
+                
+                return (false, Job: job);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "{Action}: Concurrency conflict when updating job. JobId={JobId}, Attempt={Attempt}",
+                    actionName,
+                    job.JobId,
+                    attempt + 1);
+
+                // Detach the conflicted entity to allow retry
+                _dbContext.Entry(job).State = EntityState.Detached;
+
+                if (attempt == maxRetries - 1)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to start job {jobId} after {maxRetries} attempts due to concurrency conflicts", ex);
+                }
+
+                // Exponential backoff before retry
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(Math.Pow(2, attempt) * 100),
+                    cancellationToken);
+            }
+        }
+
+        return (Success: false, Job: null);
+    }
+
 }

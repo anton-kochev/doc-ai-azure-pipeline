@@ -2,6 +2,7 @@ using DocProcessing.Application.Interfaces;
 using DocProcessing.Domain.Entities;
 using DocProcessing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Infrastructure.Tests;
 
@@ -23,8 +24,11 @@ public class InMemoryDbContext : IApplicationDbContext, IDisposable
     public DbSet<ProcessJob> ProcessJobs { get => _context.ProcessJobs; set => _context.ProcessJobs = value; }
     public DbSet<ProfileCatalog> ProfileCatalogs { get => _context.ProfileCatalogs; set => _context.ProfileCatalogs = value; }
 
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken) 
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
         => _context.SaveChangesAsync(cancellationToken);
+
+    public EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class
+        => _context.Entry(entity);
 
     public void Dispose()
     {

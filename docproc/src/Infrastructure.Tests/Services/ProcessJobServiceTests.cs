@@ -743,7 +743,7 @@ public class ProcessJobServiceTests : IDisposable
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Cannot start processing: Job not found")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("StartProcessing: Cannot update job. Job not found.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -882,7 +882,7 @@ public class ProcessJobServiceTests : IDisposable
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job completed successfully")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job completed successfully.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -902,7 +902,7 @@ public class ProcessJobServiceTests : IDisposable
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Cannot complete job: Job not found")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Complete: Cannot update job. Job not found.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -1069,7 +1069,11 @@ public class ProcessJobServiceTests : IDisposable
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
-        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        byte[] sha256Hash =
+        [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            30, 31, 32
+        ];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
         await _service.StartProcessingAsync(jobId);
         _loggerMock.Reset();
@@ -1082,7 +1086,7 @@ public class ProcessJobServiceTests : IDisposable
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job failed")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job failed.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -1102,7 +1106,7 @@ public class ProcessJobServiceTests : IDisposable
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Cannot fail job: Job not found")),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Fail: Cannot update job. Job not found.")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
