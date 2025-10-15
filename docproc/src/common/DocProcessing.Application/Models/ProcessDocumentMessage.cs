@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace DocProcessing.Contracts.Models;
+namespace DocProcessing.Application.Models;
 
 /// <summary>
 /// Message contract for document processing requests from Service Bus.

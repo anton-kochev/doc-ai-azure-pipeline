@@ -1,7 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
-using DocProcessing.Contracts.Models;
+using DocProcessing.Application.Models;
 
 namespace DocProcessing.Orchestrator.Functions;
 

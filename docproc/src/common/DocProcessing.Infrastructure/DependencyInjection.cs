@@ -1,5 +1,4 @@
 using DocProcessing.Application.Interfaces;
-using DocProcessing.Infrastructure.FileUpload;
 using DocProcessing.Infrastructure.MessageBroker;
 using DocProcessing.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +29,6 @@ public static class DependencyInjection
         
         // Configure custom options
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
-        services.Configure<FileUploadOptions>(configuration.GetSection(FileUploadOptions.SectionName));
         services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
         
         // Register services

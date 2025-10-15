@@ -1,4 +1,4 @@
-namespace DocProcessing.Infrastructure.FileUpload;
+namespace DocProcessing.Api.Options;
 
 /// <summary>
 /// Configuration options for file upload validation.

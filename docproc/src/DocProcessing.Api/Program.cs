@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DocProcessing.Api.Options;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Services;
 using DocProcessing.Infrastructure;
@@ -28,6 +29,9 @@ IHost host = new HostBuilder()
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
+        
+        // Configure custom options
+        services.Configure<FileUploadOptions>(context.Configuration.GetSection(FileUploadOptions.SectionName));
 
         // Add infrastructure services (includes storage and messaging)
         services.AddInfrastructure(context.Configuration);

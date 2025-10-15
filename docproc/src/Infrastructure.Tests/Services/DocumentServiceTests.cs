@@ -1,28 +1,21 @@
 using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
-using DocProcessing.Infrastructure;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Moq;
 
-namespace DocProcessing.Api.Tests.Services;
+namespace Infrastructure.Tests;
 
 public class DocumentServiceTests : IDisposable
 {
-    private readonly ApplicationDbContext _dbContext;
+    private readonly InMemoryDbContext _dbContext;
     private readonly Mock<ILogger<DocumentService>> _loggerMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly DocumentService _service;
 
     public DocumentServiceTests()
     {
-        // Create a unique database name for each test to ensure isolation
-        DbContextOptions<ApplicationDbContext> options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new ApplicationDbContext(options);
+        _dbContext = new InMemoryDbContext();
         _loggerMock = new Mock<ILogger<DocumentService>>();
         _timeProvider = new FakeTimeProvider();
         _service = new DocumentService(_dbContext, _loggerMock.Object, _timeProvider);
@@ -342,7 +335,7 @@ public class DocumentServiceTests : IDisposable
         Document? deletedDocument = await _dbContext.Documents.FindAsync(deletedDocumentId);
         Assert.NotNull(deletedDocument);
         deletedDocument.Status = DocumentStatus.Deleted;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act - Try to create another document with the same hash
         (Guid documentId, bool isNew) = await _service.GetOrCreateDocumentAsync(

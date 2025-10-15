@@ -2,7 +2,7 @@ using DocProcessing.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace DocProcessing.Api.Tests.Services;
+namespace DocProcessing.Tests;
 
 public class BlobStorageServiceTests
 {

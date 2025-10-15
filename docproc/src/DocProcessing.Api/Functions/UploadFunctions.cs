@@ -5,8 +5,8 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using DocProcessing.Api.Options;
 using DocProcessing.Application.Interfaces;
-using DocProcessing.Infrastructure.FileUpload;
 
 namespace DocProcessing.Api.Functions;
 

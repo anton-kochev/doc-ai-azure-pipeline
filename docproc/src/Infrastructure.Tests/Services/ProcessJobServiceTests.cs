@@ -1,27 +1,24 @@
+using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
 using DocProcessing.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Moq;
 
-namespace DocProcessing.Api.Tests.Services;
+namespace Infrastructure.Tests;
 
 public class ProcessJobServiceTests : IDisposable
 {
-    private readonly ApplicationDbContext _dbContext;
+    private readonly InMemoryDbContext _dbContext;
     private readonly Mock<ILogger<ProcessJobService>> _loggerMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly ProcessJobService _service;
 
     public ProcessJobServiceTests()
     {
-        // Create a unique database name for each test to ensure isolation
-        DbContextOptions<ApplicationDbContext> options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new ApplicationDbContext(options);
+        _dbContext = new InMemoryDbContext();
         _loggerMock = new Mock<ILogger<ProcessJobService>>();
         _timeProvider = new FakeTimeProvider();
         _service = new ProcessJobService(_dbContext, _loggerMock.Object, _timeProvider);
@@ -262,7 +259,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(firstJobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Processing;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act - Try to create another job with same parameters
         (Guid secondJobId, bool secondIsNew) = await _service.GetOrCreateJobAsync(
@@ -296,7 +293,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(firstJobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Completed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act - Try to create another job with same parameters
         (Guid secondJobId, bool secondIsNew) = await _service.GetOrCreateJobAsync(
@@ -330,7 +327,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(firstJobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act - Try to create another job with same parameters
         (Guid secondJobId, bool secondIsNew) = await _service.GetOrCreateJobAsync(
@@ -660,7 +657,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Processing;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.StartProcessingAsync(jobId);
@@ -680,7 +677,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Completed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.StartProcessingAsync(jobId);
@@ -700,7 +697,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.StartProcessingAsync(jobId);
@@ -838,7 +835,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Completed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.CompleteJobAsync(jobId);
@@ -858,7 +855,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.CompleteJobAsync(jobId);
@@ -1038,7 +1035,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Completed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.FailJobAsync(jobId);
@@ -1058,7 +1055,7 @@ public class ProcessJobServiceTests : IDisposable
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         job.Status = ProcessJobStatus.Failed;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act
         bool result = await _service.FailJobAsync(jobId);

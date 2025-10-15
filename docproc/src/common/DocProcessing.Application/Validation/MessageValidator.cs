@@ -1,4 +1,4 @@
-using DocProcessing.Contracts.Models;
+using DocProcessing.Application.Models;
 
 namespace DocProcessing.Application.Validation;
 
