@@ -1,6 +1,7 @@
+using DocProcessing.Application.Models;
 using DocProcessing.Domain.Entities;
 
-namespace DocProcessing.Application.Pipeline;
+namespace DocProcessing.Application.Interfaces;
 
 /// <summary>
 /// Represents a discrete stage in the document processing pipeline.
@@ -35,7 +36,7 @@ public sealed class StageContext
     /// <summary>
     /// Gets or sets the process job being executed.
     /// </summary>
-    public required ProcessJob Job { get; init; }
+    public required ProcessJobModel Job { get; init; }
 
     /// <summary>
     /// Gets or sets additional metadata for the stage execution.

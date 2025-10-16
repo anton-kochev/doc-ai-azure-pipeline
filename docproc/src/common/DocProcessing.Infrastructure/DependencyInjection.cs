@@ -1,4 +1,5 @@
 using DocProcessing.Application.Interfaces;
+using DocProcessing.Infrastructure.Factories;
 using DocProcessing.Infrastructure.MessageBroker;
 using DocProcessing.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace DocProcessing.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection RegisterInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Register DbContext
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -34,7 +35,10 @@ public static class DependencyInjection
         // Register services
         services.AddScoped<IMessagingService, ServiceBusService>();
         services.AddScoped<IStorageService, BlobStorageService>();
-
+        
+        // Register factories
+        services.AddTransient<IPipelineActivityFactory, PipelineActivityFactory>();
+        
         return services;
     }
 }

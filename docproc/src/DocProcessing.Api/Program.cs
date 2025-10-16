@@ -1,8 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DocProcessing.Api.Options;
-using DocProcessing.Application.Interfaces;
-using DocProcessing.Application.Services;
+using DocProcessing.Application;
 using DocProcessing.Infrastructure;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
@@ -13,8 +12,15 @@ IHost host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
     .ConfigureAppConfiguration((context, config) =>
     {
-        config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+        config
+            .AddJsonFile(
+                path: "appsettings.json",
+                optional: false,
+                reloadOnChange: true)
+            .AddJsonFile(
+                path: $"appsettings.{context.HostingEnvironment.EnvironmentName}.json", 
+                optional: true,
+                reloadOnChange: true)
             .AddEnvironmentVariables();
     })
     .ConfigureServices((context, services) =>
@@ -29,16 +35,15 @@ IHost host = new HostBuilder()
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
-        
+
         // Configure custom options
         services.Configure<FileUploadOptions>(context.Configuration.GetSection(FileUploadOptions.SectionName));
 
         // Add infrastructure services (includes storage and messaging)
-        services.AddInfrastructure(context.Configuration);
+        services.RegisterInfrastructure(context.Configuration);
 
         // Register application services
-        services.AddScoped<IDocumentService, DocumentService>();
-        services.AddScoped<IProcessJobService, ProcessJobService>();
+        services.RegisterApplication();
     })
     .Build();
 

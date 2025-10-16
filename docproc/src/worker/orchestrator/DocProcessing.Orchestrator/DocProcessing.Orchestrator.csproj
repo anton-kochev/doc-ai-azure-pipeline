@@ -22,6 +22,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\common\DocProcessing.Application\DocProcessing.Application.csproj" />
+      <ProjectReference Include="..\..\..\common\DocProcessing.Infrastructure\DocProcessing.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>
