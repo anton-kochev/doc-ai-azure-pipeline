@@ -85,7 +85,11 @@ DocumentIngestionTrigger
   ↓ (validates & starts orchestration)
 DocumentProcessingOrchestrator
   ↓ (coordinates workflow)
-[Activity Functions - TODO]
+Activity Functions:
+  - StartJob (initializes job processing)
+  - GetJob (retrieves job state)
+  - CompleteJob (marks job as completed)
+  - FailJob (marks job as failed)
 ```
 
 ## Running Locally
@@ -128,10 +132,23 @@ az servicebus queue message send \
   }'
 ```
 
+## Implemented Features
+
+- **Service Bus Trigger** - `DocumentIngestionTrigger` validates and processes messages from the queue
+- **Durable Orchestration** - `DocumentProcessingOrchestrator` coordinates the document processing workflow
+- **Activity Functions**:
+  - `StartJob` - Initializes job processing and updates status to Processing
+  - `GetJob` - Retrieves current job state from the database
+  - `CompleteJob` - Marks job as completed and updates final state
+  - `FailJob` - Marks job as failed with error details
+- **Application Insights Integration** - Full telemetry and distributed tracing
+- **Message Validation** - Validates message structure and version compatibility
+- **Idempotency Support** - Prevents duplicate processing using orchestration instance IDs
+
 ## Next Steps
 
-1. Implement activity functions for document processing workflow
-2. Add retry policies and error handling strategies
-3. Implement orchestration logic in `DocumentProcessingOrchestrator`
-4. Add unit and integration tests
-5. Configure monitoring and alerts in Application Insights
+1. Add retry policies and error handling strategies for activity functions
+2. Implement document processing stages (OCR, Preprocess, Embed, Extract, Validate, Persist, Notify)
+3. Add unit and integration tests
+4. Configure monitoring and alerts in Application Insights
+5. Implement external event handling for manual review workflows

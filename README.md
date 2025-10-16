@@ -549,7 +549,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 
 ## Recent Updates
 
-### Latest (October 2024)
+### Latest (October 2025)
 - ✅ **Infrastructure Layer** - Refactored to shared Infrastructure layer with BlobStorageService and ServiceBusService
 - ✅ **Managed Identity** - Added Managed Identity support for Azure Storage and Service Bus authentication
 - ✅ **Retry Mechanism** - Implemented RetryJob API endpoint for failed job recovery
