@@ -1,16 +1,16 @@
-name: Build and Deploy Worker.Orchestrator to Azure Functions App
+name: Build and Deploy Orchestrator to Azure Functions App
 
 on:
   push:
     branches: 
       - main
     paths:
-      - 'docproc/src/worker/orchestrator/Worker.Orchestrator/**'
+      - 'docproc/src/worker/orchestrator/DocProcessing.Orchestrator/**'
       - '.github/workflows/deploy-worker-orchestrator-functions.yml'
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/worker/orchestrator/Worker.Orchestrator"
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/worker/orchestrator/DocProcessing.Orchestrator"
   DOTNET_VERSION: "8.0.x"
 
 jobs:
