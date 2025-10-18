@@ -1,3 +1,5 @@
+# TypeScript Core Style Guide
+
 ---
 id: typescript-core
 title: TypeScript Core Style Guide
@@ -7,8 +9,6 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.ts", "**/*.tsx"]
 ---
-
-# TypeScript Core Style Guide
 
 ## General Principles
 
@@ -24,7 +24,6 @@ appliesTo: ["**/*.ts", "**/*.tsx"]
 - **Primitives**: Use lowercase `string`, `number`, `boolean`, never `String`, `Number`, `Boolean`
 - **Arrays**: Prefer `Type[]` over `Array<Type>` for simple types
 - **Objects**: Use interface for object shapes, type for unions/intersections
-- **Unknown over Any**: Use `unknown` when type is uncertain, avoid `any`
 
 ```typescript
 // Good
@@ -87,8 +86,8 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 
 - **Variables/Functions**: camelCase (`userName`, `fetchData`)
 - **Classes/Interfaces/Types**: PascalCase (`User`, `UserService`, `ResponseData`)
-- **Enums**: PascalCase for enum name, UPPER_CASE for values
 - **Constants**: UPPER_SNAKE_CASE for true constants (`MAX_RETRIES`, `API_BASE_URL`)
+- **Const Objects** (enum alternatives): PascalCase with `Enum` suffix (`StatusEnum`, `UserRoleEnum`)
 - **Private fields**: Prefix with `#` or `private` keyword (prefer `#`)
 - **Boolean variables**: Use is/has/can prefix (`isLoading`, `hasAccess`, `canDelete`)
 
@@ -97,12 +96,12 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 const MAX_RETRY_ATTEMPTS = 3;
 const API_BASE_URL = 'https://api.example.com';
 
-// Enums
-enum UserRole {
-  ADMIN = 'admin',
-  USER = 'user',
-  GUEST = 'guest'
-}
+// Const objects instead of enums (preferred approach)
+const StatusEnum = {
+  Success: "Success",
+  Pending: "Pending",
+  Failed: "Failed",
+} as const;
 
 // Classes with private fields
 class UserManager {
@@ -411,7 +410,7 @@ function processItems(items: readonly Item[]): void {
 ### Avoid Magic Numbers
 
 - Extract constants with meaningful names
-- Use enums for related constants
+- Use const objects (with `as const`) for related constants instead of enums
 
 ```typescript
 // Bad
@@ -423,14 +422,16 @@ const ACTIVE_STATUS = 1;
 
 if (user.age >= MINIMUM_AGE && user.status === ACTIVE_STATUS) { }
 
-// Better with enum
-enum UserStatus {
-  INACTIVE = 0,
-  ACTIVE = 1,
-  SUSPENDED = 2
-}
+// Better with const object (preferred over enum)
+const UserStatusEnum = {
+  INACTIVE: 0,
+  ACTIVE: 1,
+  SUSPENDED: 2,
+} as const;
 
-if (user.age >= MINIMUM_AGE && user.status === UserStatus.ACTIVE) { }
+type UserStatus = typeof UserStatusEnum[keyof typeof UserStatusEnum];
+
+if (user.age >= MINIMUM_AGE && user.status === UserStatusEnum.ACTIVE) { }
 ```
 
 ### Documentation
@@ -461,21 +462,77 @@ function calculateTotal(
 }
 ```
 
-## Performance Considerations
+## Enums - Avoid TypeScript Enums
 
-- Use `const enum` for compile-time constants (zero runtime cost)
-- Avoid expensive computations in type guards
-- Use lazy initialization for heavy objects
+**IMPORTANT**: Avoid using TypeScript `enum` and `const enum`. Instead, use const objects with `as const` assertion.
+
+### Why Avoid Enums?
+
+- Enums generate runtime code that can be confusing
+- Numeric enums allow reverse mapping which can lead to bugs
+- Const enums have limitations with module boundaries and can cause issues with transpilation
+- Const objects provide better type safety and no runtime overhead
+
+### Recommended Pattern
 
 ```typescript
-// const enum for zero runtime cost
-const enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3
+// ✅ GOOD - Use const object with 'as const'
+const UserRoleEnum = {
+  ADMIN: 'admin',
+  USER: 'user',
+  GUEST: 'guest',
+} as const;
+
+// Extract the type from the const object
+type UserRole = typeof UserRoleEnum[keyof typeof UserRoleEnum];
+// UserRole = 'admin' | 'user' | 'guest'
+
+// Usage
+function checkRole(role: UserRole): void {
+  if (role === UserRoleEnum.ADMIN) {
+    // ...
+  }
 }
 
+// ❌ BAD - Don't use enum
+enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  GUEST = 'guest'
+}
+
+// ❌ BAD - Don't use const enum
+const enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  GUEST = 'guest'
+}
+```
+
+### Numeric Values
+
+For numeric values, the same pattern applies:
+
+```typescript
+// ✅ GOOD
+const LogLevelEnum = {
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3,
+} as const;
+
+type LogLevel = typeof LogLevelEnum[keyof typeof LogLevelEnum];
+// LogLevel = 0 | 1 | 2 | 3
+```
+
+## Performance Considerations
+
+- Avoid expensive computations in type guards
+- Use lazy initialization for heavy objects
+- Use const objects with `as const` instead of enums (zero runtime cost)
+
+```typescript
 // Lazy initialization
 class ExpensiveService {
   #instance?: HeavyObject;
