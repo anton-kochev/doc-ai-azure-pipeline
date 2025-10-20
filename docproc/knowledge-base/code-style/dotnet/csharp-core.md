@@ -7,10 +7,7 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.cs"]
 ---
-
-# C# Core Style Guide
-
-## General Principles
+### C# General Principles
 
 - Target modern C# (C# 12+) and .NET 8+
 - Enable nullable reference types in all projects (`<Nullable>enable</Nullable>`)
@@ -18,21 +15,24 @@ appliesTo: ["**/*.cs"]
 - Prefer expression-bodied members for simple operations
 - Follow Microsoft's official [C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
 
-## Naming Conventions
+### C# Naming Conventions
 
-### Pascal Case
+#### Pascal Case
+
 - Classes, structs, records, interfaces: `UserAccount`, `IUserService`
 - Methods, properties, events: `GetUser()`, `UserName`, `OnChanged`
 - Namespaces: `MyCompany.MyProduct.MyFeature`
 - Public fields (avoid when possible): `MaxValue`
 - Enum types and values: `UserRole.Administrator`
 
-### Camel Case
+#### Camel Case
+
 - Local variables: `userName`, `isValid`
 - Private fields: `_userName`, `_isValid` (with underscore prefix)
 - Method parameters: `userId`, `requestData`
 
-### Other Conventions
+#### Other Conventions
+
 - Interfaces: Prefix with `I` (e.g., `IUserService`, `IRepository<T>`)
 - Type parameters: Single uppercase letter or descriptive PascalCase with `T` prefix (e.g., `T`, `TKey`, `TValue`, `TEntity`)
 - Constants: PascalCase (e.g., `MaxRetryCount`, `DefaultTimeout`)
@@ -58,9 +58,9 @@ public class UserRepository : IUserRepository
 }
 ```
 
-## Modern C# Features
+### Modern C# Features
 
-### Nullable Reference Types
+#### Nullable Reference Types
 
 - **Always** enable nullable reference types
 - Use `?` for nullable reference types
@@ -88,7 +88,7 @@ public class User
 }
 ```
 
-### Records and Init-Only Properties
+#### Records and Init-Only Properties
 
 - Use `record` for immutable data transfer objects (DTOs) and value objects
 - Use `record class` explicitly when inheritance is needed
@@ -114,7 +114,7 @@ public record UserDto(int Id, string Name)
 }
 ```
 
-### Pattern Matching
+#### Pattern Matching
 
 - Use pattern matching for type checks and value comparisons
 - Prefer `is` patterns over traditional casting
@@ -154,7 +154,7 @@ int GetScore(int[] numbers) => numbers switch
 };
 ```
 
-### Required Members (C# 11+)
+#### Required Members (C# 11+)
 
 - Use `required` modifier for properties that must be initialized
 - Reduces need for multiple constructors
@@ -175,7 +175,7 @@ CreateUserRequest request = new CreateUserRequest
 };
 ```
 
-### File-Scoped Namespaces (C# 10+)
+#### File-Scoped Namespaces (C# 10+)
 
 - Use file-scoped namespaces to reduce indentation
 - One namespace per file
@@ -200,7 +200,7 @@ namespace MyCompany.MyProduct.Domain
 }
 ```
 
-### Target-Typed New (C# 9+)
+#### Target-Typed New (C# 9+)
 
 - Use `new()` when type is obvious from context
 
@@ -217,9 +217,9 @@ public User CreateUser() => new() { Name = "Default" };
 User user = new User();
 ```
 
-## Classes and Structs
+### Classes and Structs
 
-### Class Structure Order
+#### Class Structure Order
 
 1. Constants
 2. Static fields
@@ -266,7 +266,7 @@ public class UserService
 }
 ```
 
-### Access Modifiers
+#### Access Modifiers
 
 - Always specify access modifiers explicitly (don't rely on defaults)
 - Use most restrictive access level possible
@@ -283,7 +283,7 @@ public class User
 }
 ```
 
-### Immutability
+#### Immutability in CSharp
 
 - Prefer immutable types when possible
 - Use `readonly` fields and `init` properties
@@ -307,9 +307,9 @@ public sealed class UserId
 public record Address(string Street, string City, string Country);
 ```
 
-## Methods and Properties
+### Methods and Properties
 
-### Method Guidelines
+#### Method Guidelines
 
 - Keep methods short and focused (single responsibility)
 - Use expression-bodied members for simple operations
@@ -331,7 +331,7 @@ public async Task<User?> GetUserAsync(int id, CancellationToken cancellationToke
 }
 ```
 
-### Property Guidelines
+#### Property Guidelines
 
 - Use auto-properties when no logic is needed
 - Prefer `init` over `set` for immutability
@@ -365,9 +365,9 @@ public class User
 }
 ```
 
-## Async/Await
+### CSharpAsync/Await
 
-### Best Practices
+#### CSharp Best Practices
 
 - **Always** pass `CancellationToken` to async methods
 - Use `ConfigureAwait(false)` in library code (not in ASP.NET Core)
@@ -405,7 +405,7 @@ private async void OnButtonClick(object sender, EventArgs e)
 }
 ```
 
-### Async Streams (C# 8+)
+#### Async Streams (C# 8+)
 
 - Use `IAsyncEnumerable<T>` for streaming data
 
@@ -427,9 +427,9 @@ await foreach (User user in userService.GetUsersAsync(cancellationToken))
 }
 ```
 
-## LINQ
+### LINQ
 
-### Querying Best Practices
+#### Querying Best Practices
 
 - Prefer method syntax over query syntax for simple queries
 - Use query syntax for complex queries with multiple `from` clauses
@@ -456,9 +456,9 @@ IEnumerable<dynamic> userOrders =
 IEnumerable<User> result = (from u in users select u).Where(u => u.IsActive);
 ```
 
-## Exception Handling
+### Exception Handling
 
-### Exception Best Practices
+#### Exception Best Practices
 
 - Use specific exception types, not generic `Exception`
 - Include meaningful error messages
@@ -510,9 +510,9 @@ public class UserNotFoundException : Exception
 }
 ```
 
-## String Handling
+### String Handling
 
-### String Best Practices
+#### String Best Practices
 
 - Use string interpolation over concatenation
 - Use raw string literals (C# 11+) for multi-line strings
@@ -546,9 +546,9 @@ if (name.Equals("admin", StringComparison.OrdinalIgnoreCase))
 }
 ```
 
-## Collections
+### Collections
 
-### Collection Guidelines
+#### Collection Guidelines
 
 - Use `List<T>` for general-purpose lists
 - Use `IReadOnlyList<T>` or `ImmutableList<T>` for exposing read-only collections
@@ -575,9 +575,9 @@ Dictionary<int, string> statusMap = new Dictionary<int, string>
 };
 ```
 
-## Generics
+### Generics (CSharp-specific)
 
-### Generic Guidelines
+#### Generic Guidelines
 
 - Use descriptive names for generic parameters when context is unclear
 - Constrain generics with `where` clauses
@@ -606,9 +606,9 @@ public static T Add<T>(T left, T right) where T : INumber<T>
     => left + right;
 ```
 
-## Documentation
+### Documentation  (CSharp-specific)
 
-### XML Documentation Comments
+#### XML Documentation Comments
 
 - Document all public APIs
 - Include `<summary>`, `<param>`, `<returns>`, and `<exception>` tags
@@ -635,9 +635,9 @@ public async Task<User?> GetUserAsync(int id, CancellationToken cancellationToke
 }
 ```
 
-## Performance Considerations
+### Performance Considerations (CSharp-specific)
 
-### Performance Best Practices
+#### Performance Best Practices
 
 - Use `ValueTask<T>` for hot paths that may complete synchronously
 - Use `stackalloc` for small temporary buffers
@@ -670,9 +670,9 @@ for (int i = 0; i < items.Count; i++)  // Use for instead of foreach to avoid en
 }
 ```
 
-## Code Organization
+### Code Organization
 
-### Namespace and Using Directives
+#### Namespace and Using Directives
 
 - Use file-scoped namespaces
 - Place `using` directives outside namespace (C# 10+)
@@ -699,9 +699,9 @@ public class UserRepository : IUserRepository
 }
 ```
 
-## Avoid Common Pitfalls
+### Avoid Common Pitfalls
 
-### Anti-Patterns to Avoid
+#### Anti-Patterns to Avoid
 
 ```csharp
 // ❌ Avoid - mutable DTO

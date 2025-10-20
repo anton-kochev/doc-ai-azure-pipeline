@@ -1,5 +1,3 @@
-# TypeScript Core Style Guide
-
 ---
 id: typescript-core
 title: TypeScript Core Style Guide
@@ -9,17 +7,16 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.ts", "**/*.tsx"]
 ---
-
-## General Principles
+### General Principles
 
 - Use strict TypeScript mode with `strict: true`
 - Enable all recommended strict checks: `noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`, `strictPropertyInitialization`
 - Prefer explicit types over implicit inference for public APIs
 - Use type inference for local variables where the type is obvious
 
-## Type System
+### Type System
 
-### Basic Types
+#### Basic Types
 
 - **Primitives**: Use lowercase `string`, `number`, `boolean`, never `String`, `Number`, `Boolean`
 - **Arrays**: Prefer `Type[]` over `Array<Type>` for simple types
@@ -37,7 +34,7 @@ const items: Array<number> = [1, 2, 3];
 const value: any = getUserInput();
 ```
 
-### Interfaces vs Types
+#### Interfaces vs Types
 
 - **Interfaces**: For object shapes, especially when extending or implementing
 - **Types**: For unions, intersections, mapped types, and utility types
@@ -56,7 +53,7 @@ type Status = 'pending' | 'active' | 'inactive';
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 ```
 
-### Generics
+#### Generics (TypeScript-specific)
 
 - Use descriptive names for generic parameters when context is unclear
 - Single letter (`T`, `K`, `V`) is acceptable for simple, obvious cases
@@ -82,7 +79,7 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 }
 ```
 
-## Naming Conventions
+### Naming Conventions
 
 - **Variables/Functions**: camelCase (`userName`, `fetchData`)
 - **Classes/Interfaces/Types**: PascalCase (`User`, `UserService`, `ResponseData`)
@@ -113,9 +110,9 @@ class UserManager {
 }
 ```
 
-## Functions
+### Functions
 
-### Function Declarations
+#### Function Declarations
 
 - Always specify return types for exported functions
 - Use arrow functions for callbacks and short functions
@@ -137,7 +134,7 @@ async function fetchUser(id: string): Promise<User> {
 }
 ```
 
-### Function Overloads
+#### Function Overloads
 
 - Use function overloads for different parameter combinations
 - Place most specific overloads first
@@ -154,9 +151,9 @@ function createDate(yearOrTimestamp: number, month?: number, day?: number): Date
 }
 ```
 
-## Classes
+### Classes
 
-### Class Structure
+#### Class Structure
 
 - Order: static fields, instance fields, constructor, static methods, public instance methods, protected instance methods, private instance methods
 - Always use `readonly` for immutable properties
@@ -202,9 +199,9 @@ class UserService {
 }
 ```
 
-## Type Assertions and Guards
+### Type Assertions and Guards
 
-### Type Assertions
+#### Type Assertions
 
 - Avoid type assertions (`as`) when possible
 - Use type guards and narrowing instead
@@ -225,7 +222,7 @@ if (isString(value)) {
 }
 ```
 
-### Type Guards
+#### Type Guards
 
 - Create custom type guards for complex types
 - Use `is` predicate in return type
@@ -252,7 +249,7 @@ function handlePet(pet: Dog | Cat): void {
 }
 ```
 
-## Null and Undefined
+### Null and Undefined
 
 - Prefer `undefined` over `null` for optional values
 - Use optional chaining (`?.`) and nullish coalescing (`??`)
@@ -272,7 +269,7 @@ const port = config?.server?.port ?? 3000;
 const timeout = config.timeout ?? 5000;
 ```
 
-## Utility Types
+### Utility Types
 
 Use TypeScript's built-in utility types:
 
@@ -296,7 +293,7 @@ type UserMap = Record<string, User>;
 type ImmutableUsers = ReadonlyArray<User>;
 ```
 
-## Async/Await
+### TypeScript Async/Await
 
 - Prefer Promises over async/await for better control flow and composability
 - Use `.then()` and `.catch()` for Promise chaining
@@ -327,7 +324,7 @@ async function processMultipleUsers(ids: string[]): Promise<void> {
 }
 ```
 
-## Error Handling
+### Error Handling in TypeScript
 
 - Create custom error classes for specific error types
 - Use discriminated unions for result types
@@ -363,7 +360,7 @@ async function saveUser(user: User): Promise<Result<User>> {
 }
 ```
 
-## Imports and Exports
+### Imports and Exports
 
 - Use named exports over default exports
 - Group imports: external libraries, internal modules, types
@@ -385,9 +382,9 @@ export interface UserConfig { }
 export type UserRole = 'admin' | 'user';
 ```
 
-## Best Practices
+### TypeScript Best Practices
 
-### Immutability
+#### Immutability in TypeScript
 
 - Prefer `const` over `let`, never use `var`
 - Use `readonly` for properties that shouldn't change
@@ -407,7 +404,7 @@ function processItems(items: readonly Item[]): void {
 }
 ```
 
-### Avoid Magic Numbers
+#### Avoid Magic Numbers
 
 - Extract constants with meaningful names
 - Use const objects (with `as const`) for related constants instead of enums
@@ -434,7 +431,7 @@ type UserStatus = typeof UserStatusEnum[keyof typeof UserStatusEnum];
 if (user.age >= MINIMUM_AGE && user.status === UserStatusEnum.ACTIVE) { }
 ```
 
-### Documentation
+#### Documentation (TypeScript-specific)
 
 - Use JSDoc comments for public APIs
 - Document complex logic and business rules
@@ -462,18 +459,18 @@ function calculateTotal(
 }
 ```
 
-## Enums - Avoid TypeScript Enums
+### Enums - Avoid TypeScript Enums
 
 **IMPORTANT**: Avoid using TypeScript `enum` and `const enum`. Instead, use const objects with `as const` assertion.
 
-### Why Avoid Enums?
+#### Why Avoid Enums?
 
 - Enums generate runtime code that can be confusing
 - Numeric enums allow reverse mapping which can lead to bugs
 - Const enums have limitations with module boundaries and can cause issues with transpilation
 - Const objects provide better type safety and no runtime overhead
 
-### Recommended Pattern
+#### Recommended Pattern
 
 ```typescript
 // ✅ GOOD - Use const object with 'as const'
@@ -509,7 +506,7 @@ const enum UserRole {
 }
 ```
 
-### Numeric Values
+#### Numeric Values
 
 For numeric values, the same pattern applies:
 
@@ -526,7 +523,7 @@ type LogLevel = typeof LogLevelEnum[keyof typeof LogLevelEnum];
 // LogLevel = 0 | 1 | 2 | 3
 ```
 
-## Performance Considerations
+### Performance Considerations (TypeScript-specific)
 
 - Avoid expensive computations in type guards
 - Use lazy initialization for heavy objects

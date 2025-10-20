@@ -25,6 +25,7 @@ Thank you for contributing to the Universal Knowledge Base! This document provid
    - **Notes**: Caveats, alternatives, or extensions
 
 Example:
+
 ```markdown
 ---
 id: my-recipe
@@ -95,6 +96,7 @@ node generator.js
 KB entries are reviewed by section owners (see `OWNERS` file).
 
 **Review criteria:**
+
 - Accuracy and correctness
 - Clarity and conciseness
 - Consistency with existing KB style
@@ -102,6 +104,7 @@ KB entries are reviewed by section owners (see `OWNERS` file).
 - Framework/tool version compatibility
 
 **Approval requirements:**
+
 - At least 1 owner approval for minor changes
 - At least 2 owner approvals for breaking changes
 

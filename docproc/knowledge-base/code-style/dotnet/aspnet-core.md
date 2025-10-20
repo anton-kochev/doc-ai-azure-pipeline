@@ -7,10 +7,7 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/Controllers/**/*.cs", "**/Program.cs", "**/Startup.cs"]
 ---
-
-# ASP.NET Core Style Guide
-
-## General Principles
+### ASP.NET Core General Principles
 
 - Target ASP.NET Core 8.0 or later
 - Use minimal APIs for simple endpoints, controllers for complex APIs
@@ -19,9 +16,9 @@ appliesTo: ["**/Controllers/**/*.cs", "**/Program.cs", "**/Startup.cs"]
 - Implement versioning from the start
 - Use OpenAPI/Swagger for API documentation
 
-## Program.cs and Application Startup
+### Program.cs and Application Startup
 
-### Modern Minimal Hosting Model
+#### Modern Minimal Hosting Model
 
 - Use top-level statements in Program.cs
 - Configure services in builder phase
@@ -76,9 +73,9 @@ app.Run();
 public partial class Program { }
 ```
 
-## Controllers
+### Controllers
 
-### Controller Structure
+#### Controller Structure
 
 - Inherit from `ControllerBase` for APIs (not `Controller`)
 - Use `[ApiController]` attribute for automatic model validation
@@ -209,7 +206,7 @@ public class UsersController : ControllerBase
 }
 ```
 
-### Action Return Types
+#### Action Return Types
 
 - Use `ActionResult<T>` for typed responses
 - Use `IActionResult` when returning multiple types
@@ -237,9 +234,9 @@ public async Task<IActionResult> ProcessUser(int id)
 }
 ```
 
-## Minimal APIs
+### Minimal APIs
 
-### When to Use Minimal APIs
+#### When to Use Minimal APIs
 
 - Simple CRUD endpoints
 - Microservices with few endpoints
@@ -299,9 +296,9 @@ users.MapDelete("/{id:int}", async (
 .Produces(StatusCodes.Status404NotFound);
 ```
 
-## Request/Response Models
+### Request/Response Models
 
-### DTOs and Request Models
+#### DTOs and Request Models
 
 - Keep DTOs immutable with `init` or `record`
 - Use validation attributes or FluentValidation
@@ -353,9 +350,9 @@ public sealed record PagedResult<T>(
 }
 ```
 
-## Model Validation
+### Model Validation
 
-### Automatic Model Validation
+#### Automatic Model Validation
 
 - Use `[ApiController]` for automatic validation
 - Return `ValidationProblemDetails` for validation errors
@@ -409,9 +406,9 @@ public class ValidationFilter : IAsyncActionFilter
 }
 ```
 
-## Error Handling
+### Error Handling in ASP.NET Core
 
-### Global Exception Handler
+#### Global Exception Handler
 
 - Use exception handler middleware
 - Return consistent error responses
@@ -484,9 +481,9 @@ builder.Services.AddProblemDetails();
 app.UseExceptionHandler();
 ```
 
-## API Versioning
+### API Versioning
 
-### URL-Based Versioning
+#### URL-Based Versioning
 
 ```csharp
 // Install package: Asp.Versioning.Http
@@ -525,9 +522,9 @@ public class UsersV2Controller : ControllerBase
 }
 ```
 
-## Authentication and Authorization
+### Authentication and Authorization
 
-### JWT Bearer Authentication
+#### JWT Bearer Authentication
 
 ```csharp
 // Configuration
@@ -576,7 +573,7 @@ public class UsersController : ControllerBase
 }
 ```
 
-## CORS Configuration
+### CORS Configuration
 
 ```csharp
 // Configuration
@@ -612,9 +609,9 @@ else
 }
 ```
 
-## Response Caching and Compression
+### Response Caching and Compression
 
-### Output Caching (.NET 8+)
+#### Output Caching (.NET 8+)
 
 ```csharp
 // Configuration
@@ -654,7 +651,7 @@ public async Task<ActionResult<UserDto>> CreateUser(
 }
 ```
 
-### Response Compression
+#### Response Compression
 
 ```csharp
 builder.Services.AddResponseCompression(options =>
@@ -672,7 +669,7 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
 app.UseResponseCompression();
 ```
 
-## Health Checks
+### Health Checks
 
 ```csharp
 // Configuration
@@ -739,7 +736,7 @@ app.MapHealthChecks("/health/ready");
 app.MapHealthChecks("/health/live");
 ```
 
-## Rate Limiting (.NET 8+)
+### Rate Limiting (.NET 8+)
 
 ```csharp
 // Configuration
@@ -784,7 +781,7 @@ public IActionResult Get() => Ok();
 public IActionResult GetUnlimited() => Ok();
 ```
 
-## OpenAPI/Swagger Configuration
+### OpenAPI/Swagger Configuration
 
 ```csharp
 builder.Services.AddEndpointsApiExplorer();

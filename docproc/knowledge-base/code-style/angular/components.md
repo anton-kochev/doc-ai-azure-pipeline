@@ -7,12 +7,10 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.component.ts"]
 ---
-
-# Angular Component Style Rules
-
-## Component Structure
+### Component Structure
 
 Components should follow this order:
+
 1. Decorators (`@Component`)
 2. Public properties (inputs, outputs)
 3. Private properties
@@ -21,13 +19,13 @@ Components should follow this order:
 6. Public methods
 7. Private methods
 
-## Inputs and Outputs
+### Inputs and Outputs
 
 - Use `input()` and `output()` signals (Angular 17.1+)
 - For legacy code: use `@Input()` and `@Output()` decorators
 - Prefix output event names with verb (e.g., `userSelected`, `dataLoaded`)
 
-## Template Guidelines
+### Template Guidelines
 
 - Keep templates simple; move complex logic to component class
 - Use `@if`, `@for`, `@switch` control flow (Angular 17+)
@@ -35,13 +33,13 @@ Components should follow this order:
 - Avoid inline function calls in templates
 - Use `trackBy` for `@for` / `*ngFor` when rendering lists
 
-## Change Detection
+### Change Detection
 
 - Prefer `OnPush` change detection strategy
 - Use signals for reactive state management
 - Avoid mutating objects; prefer immutable updates
 
-## Styling
+### Styling
 
 - Use SCSS for component styles
 - Follow BEM (Block Element Modifier) naming convention:
@@ -51,7 +49,7 @@ Components should follow this order:
 - Scope styles to component using `:host` selector when needed
 - Avoid deep selectors (`::ng-deep`) unless absolutely necessary
 
-## Example
+### Example
 
 ```typescript
 @Component({
@@ -82,7 +80,7 @@ export class UserCardComponent {
 }
 ```
 
-### Template Example (user-card.component.html)
+#### Template Example (user-card.component.html)
 
 ```html
 <div class="user-card user-card--highlighted">
@@ -98,7 +96,7 @@ export class UserCardComponent {
 </div>
 ```
 
-### Style Example (user-card.component.scss)
+#### Style Example (user-card.component.scss)
 
 ```scss
 .user-card {

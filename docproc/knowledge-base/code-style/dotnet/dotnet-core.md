@@ -7,10 +7,7 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.cs", "**/*.csproj"]
 ---
-
-# .NET Core Style Guide
-
-## General Principles
+### .NET General Principles
 
 - Target .NET 8.0 or later
 - Enable nullable reference types in all projects
@@ -19,11 +16,11 @@ appliesTo: ["**/*.cs", "**/*.csproj"]
 - Prefer composition over inheritance
 - Apply SOLID principles
 
-## Project Structure
+### Project Structure
 
-### Standard .NET Solution Structure
+#### Standard .NET Solution Structure
 
-```
+```mono
 src/
 ├── Domain/              # Domain models, interfaces, and business logic
 ├── Application/         # Application services, DTOs, validators
@@ -38,7 +35,7 @@ tests/
 └── API.Tests/          # API integration tests
 ```
 
-### Project File Configuration
+#### Project File Configuration
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -61,9 +58,9 @@ tests/
 </Project>
 ```
 
-## Dependency Injection
+### .NET Dependency Injection
 
-### Service Registration
+#### Service Registration
 
 - Use `IServiceCollection` extension methods for clean registration
 - Group related services together
@@ -121,7 +118,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 ```
 
-### Service Lifetimes
+#### Service Lifetimes
 
 - **Transient**: Created each time they're requested (stateless services)
 - **Scoped**: Created once per request (DbContext, repositories)
@@ -139,7 +136,7 @@ services.AddSingleton<IMemoryCache, MemoryCache>();
 services.AddSingleton<IConfiguration>(configuration);
 ```
 
-### Keyed Services (.NET 8+)
+#### Keyed Services (.NET 8+)
 
 ```csharp
 // Register keyed services
@@ -159,9 +156,9 @@ public class NotificationController : ControllerBase
 }
 ```
 
-## Configuration
+### Configuration
 
-### appsettings.json Structure
+#### appsettings.json Structure
 
 ```json
 {
@@ -186,7 +183,7 @@ public class NotificationController : ControllerBase
 }
 ```
 
-### Options Pattern
+#### Options Pattern
 
 - Use strongly-typed configuration with the Options pattern
 - Validate options at startup
@@ -246,7 +243,7 @@ public class EmailService
 }
 ```
 
-### Secret Management
+#### Secret Management
 
 - **Never** commit secrets to source control
 - Use User Secrets for local development
@@ -276,9 +273,9 @@ public class Startup
 }
 ```
 
-## Logging
+### Logging
 
-### Structured Logging
+#### Structured Logging
 
 - Use `ILogger<T>` from Microsoft.Extensions.Logging
 - Use structured logging with named parameters
@@ -346,7 +343,7 @@ public partial class UserService
 }
 ```
 
-### Log Levels
+#### Log Levels
 
 - **Trace**: Very detailed diagnostic information (e.g., entering/exiting methods)
 - **Debug**: Debugging information useful during development
@@ -355,9 +352,9 @@ public partial class UserService
 - **Error**: Errors that prevent completion of current operation
 - **Critical**: Critical failures requiring immediate attention
 
-## Data Access
+### Data Access
 
-### Entity Framework Core
+#### Entity Framework Core
 
 - Use DbContext with proper scope management
 - Always use async methods (`ToListAsync`, `FirstOrDefaultAsync`, etc.)
@@ -447,7 +444,7 @@ public class UserRepository : IUserRepository
 }
 ```
 
-### Dapper (Micro-ORM)
+#### Dapper (Micro-ORM)
 
 - Use Dapper for performance-critical queries
 - Use parameterized queries to prevent SQL injection
@@ -483,9 +480,9 @@ public class UserRepository
 }
 ```
 
-## HTTP Client
+### HTTP Client
 
-### HttpClient Best Practices
+#### HttpClient Best Practices
 
 - Use `IHttpClientFactory` - never create HttpClient directly
 - Use typed clients for better testability
@@ -541,9 +538,9 @@ builder.Services.AddHttpClient<WeatherApiClient>(client =>
     policy.CircuitBreakerAsync(5, TimeSpan.FromSeconds(30)));
 ```
 
-## Validation
+### Validation
 
-### FluentValidation
+#### FluentValidation
 
 - Use FluentValidation for complex validation logic
 - Keep validators focused and reusable
@@ -601,9 +598,9 @@ public class UserService
 }
 ```
 
-## Background Services
+### Background Services
 
-### Hosted Services
+#### Hosted Services
 
 - Use `IHostedService` or `BackgroundService` for background tasks
 - Use `IHostApplicationLifetime` for graceful shutdown
@@ -667,9 +664,9 @@ public class EmailProcessorService : BackgroundService
 builder.Services.AddHostedService<EmailProcessorService>();
 ```
 
-## Result Pattern
+### Result Pattern
 
-### Result Type for Error Handling
+#### Result Type for Error Handling
 
 - Use Result pattern instead of exceptions for expected failures
 - Provides better error handling and explicit error types
@@ -737,9 +734,9 @@ public async Task<IActionResult> CreateUser(
 }
 ```
 
-## Testing
+### Testing
 
-### Unit Tests with xUnit
+#### Unit Tests with xUnit
 
 - Use xUnit for unit testing
 - Follow AAA pattern: Arrange, Act, Assert
@@ -792,9 +789,9 @@ public class UserServiceTests
 }
 ```
 
-## Common Utilities
+### Common Utilities
 
-### Extension Methods
+#### Extension Methods
 
 - Create extension methods for common operations
 - Place in separate static classes by domain

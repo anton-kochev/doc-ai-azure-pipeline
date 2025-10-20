@@ -7,22 +7,19 @@ version: 1.0.0
 priority: must
 appliesTo: ["**/*.ts", "**/*.html"]
 ---
-
-# Angular Core Style Guide
-
-## General Principles
+### Angular General Principles
 
 - Follow the [Angular Style Guide](https://angular.dev/style-guide)
 - Use strict TypeScript mode with `strict: true`
 - Enable `noImplicitAny`, `strictNullChecks`, and `strictPropertyInitialization`
 
-## File Organization
+### File Organization
 
 - One component/service/directive per file
 - Use index barrel exports sparingly (performance consideration)
 - Group by feature, not by type
 
-## Naming Conventions
+### Angular Naming Conventions
 
 - **Components**: `feature-name.component.ts`
 - **Services**: `feature-name.service.ts`
@@ -30,7 +27,7 @@ appliesTo: ["**/*.ts", "**/*.html"]
 - **Directives**: `feature-name.directive.ts`
 - **Pipes**: `feature-name.pipe.ts`
 
-## CSS/SCSS Styling
+### CSS/SCSS Styling
 
 - Use BEM (Block Element Modifier) methodology for CSS class naming
 - Block: represents a standalone component (e.g., `.user-card`)
@@ -38,19 +35,13 @@ appliesTo: ["**/*.ts", "**/*.html"]
 - Modifier: variant or state, separated by `--` (e.g., `.user-card--featured`)
 - Example: `.upload-form__submit-button--disabled`
 
-## TypeScript Style
+### Angular Dependency Injection
 
-- Prefer `const` over `let`, never use `var`
-- Use explicit return types for all public methods
-- Avoid `any` type; use `unknown` if type is truly unknown
-- Use readonly for immutable properties
-
-## Dependency Injection
-
-- **MUST** use `inject()` function for dependency injection by default (Angular 14+)
+- **MUST** use `inject()` function for dependency injection by default
 - Constructor injection should only be used for backward compatibility with older Angular versions
 - Services should be `providedIn: 'root'` unless scoped to a module
 - Example:
+
   ```typescript
   export class MyComponent {
     private readonly myService = inject(MyService);
@@ -58,7 +49,7 @@ appliesTo: ["**/*.ts", "**/*.html"]
   }
   ```
 
-## RxJS
+### RxJS
 
 - Always unsubscribe from subscriptions (use `takeUntilDestroyed()` or async pipe)
 - Prefer declarative patterns over imperative subscriptions

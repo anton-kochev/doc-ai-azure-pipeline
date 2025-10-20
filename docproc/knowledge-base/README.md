@@ -5,7 +5,7 @@
 
 ## Overview
 
-This is a modular, token-efficient Knowledge Base designed for both human developers and AI agents. It provides a canonical source of truth for code style guides, architectural patterns, recipes, and best practices for the docproc project.
+This is a modular, token-efficient Knowledge Base designed for both human developers and AI agents. It provides a canonical source of truth for code style guides, architectural patterns, recipes, and best practices for the project.
 
 ## Philosophy
 
@@ -20,6 +20,7 @@ This is a modular, token-efficient Knowledge Base designed for both human develo
 ### Code Style Guides
 
 #### .NET/C# (v1.1.0)
+
 - **[C# Core](code-style/dotnet/csharp-core.md)** - Modern C# 12+ language features
   - Nullable reference types
   - Records and init-only properties
@@ -53,6 +54,7 @@ This is a modular, token-efficient Knowledge Base designed for both human develo
   - OpenAPI/Swagger configuration
 
 #### Angular/TypeScript
+
 - **[Angular Core](code-style/angular/angular-core.md)** - Angular 14+ patterns
   - Component structure and lifecycle
   - Dependency injection with `inject()` function
@@ -71,23 +73,23 @@ This is a modular, token-efficient Knowledge Base designed for both human develo
   - Naming conventions
   - Async/await patterns
 
-### Recipes
-- **[Table with Filters](recipes/table-with-filters.md)** - Reusable table component pattern
-
 ## Usage
 
 ### For Humans
+
 Browse the KB directly via Markdown files. Start with [core.md](core.md) for the complete index.
 
 ### For AI Agents
 
 #### Generate Claude Code Knowledge Base
+
 ```bash
 npm install
 npm run generate
 ```
 
 This generates:
+
 - `tools/adapters/claude/claude-kb.json` - Structured JSON configuration
 - `tools/adapters/claude/claude-agent-prompt.md` - Formatted markdown prompt
 
