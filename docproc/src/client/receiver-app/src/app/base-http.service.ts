@@ -1,8 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
+
 import { ConfigService } from './config/config.service';
 
+/**
+ * Abstract base service for HTTP operations with automatic API URL building.
+ * Provides protected methods for common HTTP operations (GET, POST, PUT, PATCH, DELETE).
+ */
 export abstract class BaseHttpService {
   protected readonly http = inject(HttpClient);
   protected readonly configService = inject(ConfigService);

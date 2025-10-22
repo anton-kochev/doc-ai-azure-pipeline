@@ -1,5 +1,6 @@
 import { HttpEventType } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
@@ -13,14 +14,14 @@ import { FileUploadService } from '../file-upload.service';
   templateUrl: './upload.component.html',
 })
 export class UploadComponent {
-  selectedFile = signal<File | null>(null);
-  isDragging = signal(false);
-  isUploading = signal(false);
-  uploadProgress = signal(0);
-  uploadError = signal<string | null>(null);
-  uploadSuccess = signal(false);
+  readonly selectedFile = signal<File | null>(null);
+  readonly isDragging = signal(false);
+  readonly isUploading = signal(false);
+  readonly uploadProgress = signal(0);
+  readonly uploadError = signal<string | null>(null);
+  readonly uploadSuccess = signal(false);
 
-  private readonly fileUploadService = inject(FileUploadService);
+  readonly #fileUploadService = inject(FileUploadService);
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -67,23 +68,26 @@ export class UploadComponent {
     this.uploadSuccess.set(false);
     this.uploadProgress.set(0);
 
-    this.fileUploadService.uploadFile(file).subscribe({
-      next: (event) => {
-        if (event.type === HttpEventType.UploadProgress) {
-          const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
-          this.uploadProgress.set(progress);
-        } else if (event.type === HttpEventType.Response) {
-          this.uploadSuccess.set(true);
+    this.#fileUploadService
+      .uploadFile(file)
+      .pipe(takeUntilDestroyed())
+      .subscribe({
+        next: (event) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const progress = event.total ? Math.round((100 * event.loaded) / event.total) : 0;
+            this.uploadProgress.set(progress);
+          } else if (event.type === HttpEventType.Response) {
+            this.uploadSuccess.set(true);
+            this.isUploading.set(false);
+            console.log('Upload successful:', event.body);
+          }
+        },
+        error: (error) => {
+          this.uploadError.set('Upload failed. Please try again.');
           this.isUploading.set(false);
-          console.log('Upload successful:', event.body);
-        }
-      },
-      error: (error) => {
-        this.uploadError.set('Upload failed. Please try again.');
-        this.isUploading.set(false);
-        console.error('Upload error:', error);
-      },
-    });
+          console.error('Upload error:', error);
+        },
+      });
   }
 
   private resetUploadState(): void {

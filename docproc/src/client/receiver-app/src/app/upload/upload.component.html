@@ -1,25 +1,25 @@
 <div class="upload-container">
   <div
     class="drop-zone"
-    [class.dragging]="isDragging()"
+    [class.drop-zone--dragging]="isDragging()"
     (dragover)="onDragOver($event)"
     (dragleave)="onDragLeave($event)"
     (drop)="onDrop($event)"
   >
     @if (!selectedFile()) {
-      <div class="drop-zone-content">
+      <div class="drop-zone__content">
         <p>Drag and drop a file here or</p>
         <input
           type="file"
           #fileInput
-          class="file-input"
+          class="drop-zone__file-input"
           (change)="onFileSelected($event)"
           accept="*/*"
         />
         <button mat-raised-button color="primary" (click)="fileInput.click()">Choose File</button>
       </div>
     } @else {
-      <div class="selected-file">
+      <div class="drop-zone__selected-file">
         <p>
           <strong>{{ selectedFile()!.name }}</strong>
         </p>
@@ -31,14 +31,14 @@
         }
 
         @if (uploadError()) {
-          <p class="error-message">{{ uploadError() }}</p>
+          <p class="drop-zone__error-message">{{ uploadError() }}</p>
         }
 
         @if (uploadSuccess()) {
-          <p class="success-message">File uploaded successfully!</p>
+          <p class="drop-zone__success-message">File uploaded successfully!</p>
         }
 
-        <div class="button-group">
+        <div class="drop-zone__button-group">
           @if (!isUploading() && !uploadSuccess()) {
             <button mat-raised-button color="primary" (click)="uploadFile()">Upload</button>
           }
