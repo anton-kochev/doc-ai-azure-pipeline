@@ -26,6 +26,10 @@ public sealed class ProcessJobService : IProcessJobService
         _timeProvider = timeProvider;
     }
 
+    /// <inheritdoc />
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<bool> RetryFailedJobAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
@@ -86,6 +90,9 @@ public sealed class ProcessJobService : IProcessJobService
     }
 
     /// <inheritdoc />
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<(Guid JobId, bool IsNew)> GetOrCreateJobAsync(
         Guid documentId,
         Guid? tenantId,
@@ -147,6 +154,12 @@ public sealed class ProcessJobService : IProcessJobService
     }
 
     /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in Pending status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<bool> StartProcessingAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
@@ -182,6 +195,12 @@ public sealed class ProcessJobService : IProcessJobService
     }
 
     /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in Processing status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<bool> CompleteJobAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
@@ -216,6 +235,12 @@ public sealed class ProcessJobService : IProcessJobService
     }
 
     /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in Processing status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<bool> FailJobAsync(
         Guid jobId,
         string? errorCode = null,

@@ -5,6 +5,9 @@ namespace DocProcessing.Infrastructure.MessageBroker;
 /// </summary>
 public sealed class ServiceBusOptions
 {
+    /// <summary>
+    /// Configuration section name.
+    /// </summary>
     public const string SectionName = "ServiceBus";
 
     /// <summary>

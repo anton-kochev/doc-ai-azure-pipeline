@@ -13,7 +13,7 @@ namespace DocProcessing.Api.Functions;
 /// <summary>
 /// Azure Functions for upload-related operations.
 /// </summary>
-public sealed class UploadFunctions
+public sealed partial class UploadFunctions
 {
     private readonly ILogger<UploadFunctions> _logger;
     private readonly IStorageService _storageService;
@@ -40,14 +40,25 @@ public sealed class UploadFunctions
 
     /// <summary>
     /// Uploads a file directly to Azure Blob Storage through the Function.
+    /// Validates file type and size, computes SHA256 hash, creates database records,
+    /// and enqueues processing job to Service Bus.
     /// </summary>
-    /// <param name="req">The HTTP request containing the file.</param>
-    /// <returns>HTTP response with upload result or error.</returns>
+    /// <param name="req">The HTTP request containing the multipart/form-data file upload.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>
+    /// HTTP 202 Accepted response with job details if successful,
+    /// HTTP 400 Bad Request for validation errors,
+    /// HTTP 500 Internal Server Error for configuration or unexpected errors.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when Azure Storage or Service Bus configuration is invalid.
+    /// </exception>
     [Function("UploadFile")]
     public async Task<HttpResponseData> UploadFile(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/upload")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/upload")] HttpRequestData req,
+        CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Processing file upload request");
+        LogProcessingUploadRequest();
 
         try
         {
@@ -55,7 +66,7 @@ public sealed class UploadFunctions
             string? contentType = req.Headers.GetValues("Content-Type")?.FirstOrDefault();
             if (string.IsNullOrEmpty(contentType) || !contentType.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Invalid Content-Type: {ContentType}", contentType);
+                LogInvalidContentType(contentType);
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
                 await badRequestResponse.WriteStringAsync(JsonSerializer.Serialize(new
@@ -76,7 +87,7 @@ public sealed class UploadFunctions
 
             if (string.IsNullOrEmpty(boundary))
             {
-                _logger.LogWarning("No boundary found in Content-Type");
+                LogNoBoundaryFound();
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
 
@@ -95,7 +106,7 @@ public sealed class UploadFunctions
 
             if (fileData == null)
             {
-                _logger.LogWarning("No file found in request");
+                LogNoFileFound();
                 HttpResponseData badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 badRequestResponse.Headers.Add("Content-Type", "application/json");
 
@@ -169,9 +180,10 @@ public sealed class UploadFunctions
             UploadResult result = await _storageService.UploadAsync(
                 fileData.FileName,
                 fileData.Data,
-                fileData.ContentType);
+                fileData.ContentType,
+                cancellationToken);
 
-            _logger.LogInformation("File uploaded successfully: {FileName}, Size: {Size} bytes", result.FileName, result.FileSizeBytes);
+            LogFileUploadedSuccessfully(result.FileName, result.FileSizeBytes);
 
             // Get existing or create new Document record in the database
             (Guid documentId, bool isNewDocument) = await _documentService.GetOrCreateDocumentAsync(
@@ -188,11 +200,11 @@ public sealed class UploadFunctions
 
             if (isNewDocument)
             {
-                _logger.LogInformation("Document record created: {DocumentId}", documentId);
+                LogDocumentCreated(documentId);
             }
             else
             {
-                _logger.LogInformation("Document already exists, returning existing record: {DocumentId}", documentId);
+                LogDocumentAlreadyExists(documentId);
             }
 
             // Get existing or create a new ProcessJob with idempotency check
@@ -205,20 +217,21 @@ public sealed class UploadFunctions
 
             if (isNewJob)
             {
-                _logger.LogInformation("Process job created: {JobId}", jobId);
+                LogJobCreated(jobId);
 
                 // Enqueue Service Bus message for new jobs only
                 await _messagingService.EnqueueJobAsync(
                     jobId: jobId,
                     documentId: documentId,
-                    correlationId: jobId.ToString()
+                    correlationId: jobId.ToString(),
+                    cancellationToken
                 );
 
-                _logger.LogInformation("Job message enqueued: {JobId}", jobId);
+                LogJobMessageEnqueued(jobId);
             }
             else
             {
-                _logger.LogInformation("Process job already exists, returning existing job: {JobId}", jobId);
+                LogJobAlreadyExists(jobId);
             }
 
             // Return 202 Accepted with job and document IDs
@@ -239,7 +252,7 @@ public sealed class UploadFunctions
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Configuration error while uploading file");
+            LogConfigurationError(ex);
             HttpResponseData errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             errorResponse.Headers.Add("Content-Type", "application/json");
             await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
@@ -251,7 +264,7 @@ public sealed class UploadFunctions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error while uploading file");
+            LogUnexpectedError(ex);
             HttpResponseData errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             errorResponse.Headers.Add("Content-Type", "application/json");
             await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
@@ -263,6 +276,17 @@ public sealed class UploadFunctions
         }
     }
 
+    /// <summary>
+    /// Retries a failed processing job by transitioning it back to Pending status.
+    /// </summary>
+    /// <param name="req">The HTTP request.</param>
+    /// <param name="jobId">The ID of the job to retry (from route).</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>
+    /// HTTP 200 OK if the job was successfully retried,
+    /// HTTP 400 Bad Request if the job ID format is invalid,
+    /// HTTP 404 Not Found if the job doesn't exist or is not in Failed status.
+    /// </returns>
     [Function("RetryJob")]
     public async Task<HttpResponseData> RetryJob(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/jobs/{jobId}/retry")]
@@ -305,6 +329,79 @@ public sealed class UploadFunctions
             return notFoundResponse;
         }
     }
+
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = "Processing file upload request")]
+    private partial void LogProcessingUploadRequest();
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Warning,
+        Message = "Invalid Content-Type: {ContentType}")]
+    private partial void LogInvalidContentType(string? contentType);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Warning,
+        Message = "No boundary found in Content-Type")]
+    private partial void LogNoBoundaryFound();
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Warning,
+        Message = "No file found in request")]
+    private partial void LogNoFileFound();
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "File uploaded successfully: {FileName}, Size: {Size} bytes")]
+    private partial void LogFileUploadedSuccessfully(string fileName, long size);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = "Document record created: {DocumentId}")]
+    private partial void LogDocumentCreated(Guid documentId);
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = "Document already exists, returning existing record: {DocumentId}")]
+    private partial void LogDocumentAlreadyExists(Guid documentId);
+
+    [LoggerMessage(
+        EventId = 8,
+        Level = LogLevel.Information,
+        Message = "Process job created: {JobId}")]
+    private partial void LogJobCreated(Guid jobId);
+
+    [LoggerMessage(
+        EventId = 9,
+        Level = LogLevel.Information,
+        Message = "Job message enqueued: {JobId}")]
+    private partial void LogJobMessageEnqueued(Guid jobId);
+
+    [LoggerMessage(
+        EventId = 10,
+        Level = LogLevel.Information,
+        Message = "Process job already exists, returning existing job: {JobId}")]
+    private partial void LogJobAlreadyExists(Guid jobId);
+
+    [LoggerMessage(
+        EventId = 11,
+        Level = LogLevel.Error,
+        Message = "Configuration error while uploading file")]
+    private partial void LogConfigurationError(Exception exception);
+
+    [LoggerMessage(
+        EventId = 12,
+        Level = LogLevel.Error,
+        Message = "Unexpected error while uploading file")]
+    private partial void LogUnexpectedError(Exception exception);
 }
 
 /// <summary>

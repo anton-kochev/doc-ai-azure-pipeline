@@ -6,7 +6,15 @@ namespace DocProcessing.Tests;
 
 public class ServiceBusServiceTests
 {
-    private readonly Mock<ILogger<ServiceBusService>> _loggerMock = new();
+    private readonly Mock<ILogger<ServiceBusService>> _loggerMock;
+
+    public ServiceBusServiceTests()
+    {
+        _loggerMock = new Mock<ILogger<ServiceBusService>>();
+
+        // Setup logger mock to support source-generated logging
+        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+    }
 
     #region Constructor Tests
 

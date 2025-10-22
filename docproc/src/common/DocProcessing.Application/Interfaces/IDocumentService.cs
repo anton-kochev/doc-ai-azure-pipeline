@@ -18,7 +18,10 @@ public interface IDocumentService
     /// <param name="uploadedBy">The identifier of the user who uploaded the file.</param>
     /// <param name="tenantId">Optional tenant identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created document entity.</returns>
+    /// <returns>The ID of the created document.</returns>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     Task<Guid> CreateDocumentAsync(
         string fileName,
         string contentType,

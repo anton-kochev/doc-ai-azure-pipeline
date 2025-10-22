@@ -10,7 +10,7 @@ namespace DocProcessing.Infrastructure.MessageBroker;
 /// <summary>
 /// Implementation of Service Bus message sending operations.
 /// </summary>
-public sealed class ServiceBusService : IMessagingService, IAsyncDisposable
+public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposable
 {
     private readonly ILogger<ServiceBusService> _logger;
     private readonly ServiceBusOptions _options;
@@ -43,22 +43,17 @@ public sealed class ServiceBusService : IMessagingService, IAsyncDisposable
             }
         };
 
-        _logger.LogInformation(
-            "Configured Service Bus retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s, TryTimeout={TryTimeout}s",
-            _options.MaxRetries,
-            _options.RetryDelaySeconds,
-            _options.MaxRetryDelaySeconds,
-            _options.TryTimeoutSeconds);
+        LogServiceBusRetryPolicy(_options.MaxRetries, _options.RetryDelaySeconds, _options.MaxRetryDelaySeconds, _options.TryTimeoutSeconds);
 
         // Create a Service Bus client using connection string or Managed Identity
         if (!string.IsNullOrWhiteSpace(_options.ConnectionString))
         {
-            _logger.LogInformation("Initializing Service Bus client with connection string");
+            LogInitializingServiceBusWithConnectionString();
             _client = new ServiceBusClient(_options.ConnectionString, clientOptions);
         }
         else if (!string.IsNullOrWhiteSpace(_options.Namespace))
         {
-            _logger.LogInformation("Initializing Service Bus client with Managed Identity for namespace: {Namespace}", _options.Namespace);
+            LogInitializingServiceBusWithManagedIdentity(_options.Namespace);
             _client = new ServiceBusClient(_options.Namespace, new DefaultAzureCredential(), clientOptions);
         }
         else
@@ -67,11 +62,14 @@ public sealed class ServiceBusService : IMessagingService, IAsyncDisposable
         }
 
         _sender = _client.CreateSender(_options.QueueName);
-        _logger.LogInformation("Service Bus sender created for queue: {QueueName}", _options.QueueName);
+        LogServiceBusSenderCreated(_options.QueueName);
     }
 
     /// <inheritdoc />
-    public async Task EnqueueJobAsync(Guid jobId, Guid documentId, string correlationId)
+    /// <exception cref="Azure.Messaging.ServiceBus.ServiceBusException">
+    /// Thrown when the Service Bus operation fails.
+    /// </exception>
+    public async Task EnqueueJobAsync(Guid jobId, Guid documentId, string correlationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -99,20 +97,13 @@ public sealed class ServiceBusService : IMessagingService, IAsyncDisposable
             message.ApplicationProperties.Add("DocumentId", documentId.ToString());
 
             // Send the message
-            await _sender.SendMessageAsync(message);
+            await _sender.SendMessageAsync(message, cancellationToken);
 
-            _logger.LogInformation(
-                "Successfully enqueued job message: JobId={JobId}, DocumentId={DocumentId}, CorrelationId={CorrelationId}",
-                jobId,
-                documentId,
-                correlationId);
+            LogJobMessageEnqueued(jobId, documentId, correlationId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Failed to enqueue job message: JobId={JobId}, DocumentId={DocumentId}",
-                jobId,
-                documentId);
+            LogFailedToEnqueueJobMessage(ex, jobId, documentId);
             throw;
         }
     }
@@ -122,4 +113,41 @@ public sealed class ServiceBusService : IMessagingService, IAsyncDisposable
         await _sender.DisposeAsync();
         await _client.DisposeAsync();
     }
+
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = "Configured Service Bus retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s, TryTimeout={TryTimeout}s")]
+    private partial void LogServiceBusRetryPolicy(int maxRetries, int delay, int maxDelay, int tryTimeout);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Information,
+        Message = "Initializing Service Bus client with connection string")]
+    private partial void LogInitializingServiceBusWithConnectionString();
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Information,
+        Message = "Initializing Service Bus client with Managed Identity for namespace: {Namespace}")]
+    private partial void LogInitializingServiceBusWithManagedIdentity(string @namespace);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = "Service Bus sender created for queue: {QueueName}")]
+    private partial void LogServiceBusSenderCreated(string queueName);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "Successfully enqueued job message: JobId={JobId}, DocumentId={DocumentId}, CorrelationId={CorrelationId}")]
+    private partial void LogJobMessageEnqueued(Guid jobId, Guid documentId, string correlationId);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Error,
+        Message = "Failed to enqueue job message: JobId={JobId}, DocumentId={DocumentId}")]
+    private partial void LogFailedToEnqueueJobMessage(Exception exception, Guid jobId, Guid documentId);
 }

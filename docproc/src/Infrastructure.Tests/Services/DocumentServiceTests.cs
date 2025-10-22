@@ -17,6 +17,10 @@ public class DocumentServiceTests : IDisposable
     {
         _dbContext = new InMemoryDbContext();
         _loggerMock = new Mock<ILogger<DocumentService>>();
+
+        // Setup logger mock to support source-generated logging
+        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
         _timeProvider = new FakeTimeProvider();
         _service = new DocumentService(_dbContext, _loggerMock.Object, _timeProvider);
     }
@@ -458,6 +462,9 @@ public class DocumentServiceTests : IDisposable
             "user@example.com");
 
         _loggerMock.Reset(); // Reset to clear the log from CreateDocumentAsync
+
+        // Re-setup logger mock after reset to support source-generated logging
+        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
         // Act
         await _service.GetOrCreateDocumentAsync(

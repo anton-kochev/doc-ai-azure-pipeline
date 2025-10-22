@@ -10,7 +10,7 @@ namespace DocProcessing.Infrastructure.Storage;
 /// <summary>
 /// Implementation of Azure Blob Storage operations.
 /// </summary>
-public sealed class BlobStorageService : IStorageService
+public sealed partial class BlobStorageService : IStorageService
 {
     private readonly AzureStorageOptions _options;
     private readonly ILogger<BlobStorageService> _logger;
@@ -24,7 +24,13 @@ public sealed class BlobStorageService : IStorageService
     }
 
     /// <inheritdoc />
-    public async Task<UploadResult> UploadAsync(string fileName, Stream fileStream, string? contentType = null)
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when Azure Storage configuration is invalid (missing connection string and account name).
+    /// </exception>
+    /// <exception cref="Azure.RequestFailedException">
+    /// Thrown when the upload operation fails due to Azure Storage errors.
+    /// </exception>
+    public async Task<UploadResult> UploadAsync(string fileName, Stream fileStream, string? contentType = null, CancellationToken cancellationToken = default)
     {
         ValidateConfiguration();
 
@@ -41,11 +47,7 @@ public sealed class BlobStorageService : IStorageService
             }
         };
 
-        _logger.LogDebug(
-            "Configured Blob Storage retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s",
-            _options.MaxRetries,
-            _options.RetryDelaySeconds,
-            _options.MaxRetryDelaySeconds);
+        LogBlobStorageRetryPolicy(_options.MaxRetries, _options.RetryDelaySeconds, _options.MaxRetryDelaySeconds);
 
         // Create BlobServiceClient - use connection string if provided, otherwise use Managed Identity
         BlobServiceClient blobServiceClient;
@@ -64,7 +66,7 @@ public sealed class BlobStorageService : IStorageService
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
 
         // Ensure the container exists (especially for Azurite)
-        await containerClient.CreateIfNotExistsAsync();
+        await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
 
         BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
@@ -78,10 +80,10 @@ public sealed class BlobStorageService : IStorageService
             await blobClient.UploadAsync(fileStream, new Azure.Storage.Blobs.Models.BlobUploadOptions
             {
                 HttpHeaders = headers
-            });
+            }, cancellationToken);
 
         // Get the blob properties to retrieve the size
-        Azure.Storage.Blobs.Models.BlobProperties properties = await blobClient.GetPropertiesAsync();
+        Azure.Storage.Blobs.Models.BlobProperties properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
 
         UploadResult result = new(
             blobClient.Uri.ToString(),
@@ -102,4 +104,11 @@ public sealed class BlobStorageService : IStorageService
             throw new InvalidOperationException("Either Azure Storage connection string or account name must be configured");
         }
     }
+
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Debug,
+        Message = "Configured Blob Storage retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s")]
+    private partial void LogBlobStorageRetryPolicy(int maxRetries, int delay, int maxDelay);
 }

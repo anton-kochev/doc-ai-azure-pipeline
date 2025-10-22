@@ -8,7 +8,7 @@ namespace DocProcessing.Application.Services;
 /// <summary>
 /// Implementation of document management operations.
 /// </summary>
-public sealed class DocumentService : IDocumentService
+public sealed partial class DocumentService : IDocumentService
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<DocumentService> _logger;
@@ -25,6 +25,9 @@ public sealed class DocumentService : IDocumentService
     }
 
     /// <inheritdoc />
+    /// <exception cref="DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
     public async Task<Guid> CreateDocumentAsync(
         string fileName,
         string contentType,
@@ -56,11 +59,7 @@ public sealed class DocumentService : IDocumentService
         _dbContext.Documents.Add(document);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "Created document record: DocumentId={DocumentId}, FileName={FileName}, Size={Size}",
-            document.DocumentId,
-            document.FileName,
-            document.SizeBytes);
+        LogDocumentCreated(document.DocumentId, document.FileName, document.SizeBytes);
 
         return document.DocumentId;
     }
@@ -86,10 +85,7 @@ public sealed class DocumentService : IDocumentService
 
         if (existingDocument != null)
         {
-            _logger.LogInformation(
-                "Found existing document with same hash: DocumentId={DocumentId}, FileName={FileName}",
-                existingDocument.DocumentId,
-                existingDocument.FileName);
+            LogFoundExistingDocument(existingDocument.DocumentId, existingDocument.FileName);
 
             return (existingDocument.DocumentId, false);
         }
@@ -108,4 +104,17 @@ public sealed class DocumentService : IDocumentService
 
         return (newDocumentId, true);
     }
+
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = "Created document record: DocumentId={DocumentId}, FileName={FileName}, Size={Size}")]
+    private partial void LogDocumentCreated(Guid documentId, string fileName, long size);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Information,
+        Message = "Found existing document with same hash: DocumentId={DocumentId}, FileName={FileName}")]
+    private partial void LogFoundExistingDocument(Guid documentId, string fileName);
 }
