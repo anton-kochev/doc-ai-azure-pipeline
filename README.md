@@ -1,3 +1,7 @@
+[![Build and deploy Api to Azure Functions App](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml)
+[![Build and Deploy Orchestrator to Azure Functions App](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml)
+[![Deploy Receiver App to Azure Static Web Apps](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml)
+
 # Document AI Azure Pipeline (docproc)
 
 A serverless document processing pipeline built with .NET 8.0 Azure Functions and Angular 20.3. The system provides a complete document ingestion, processing, and management solution leveraging Azure cloud services including Blob Storage, Service Bus, SQL Database, and Durable Functions for orchestration.
