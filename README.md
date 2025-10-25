@@ -1,6 +1,6 @@
-[![Build and deploy Api to Azure Functions App](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml)
-[![Build and Deploy Orchestrator to Azure Functions App](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml)
-[![Deploy Receiver App to Azure Static Web Apps](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml)
+[![Api Azure Functions](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml)
+[![Orchestrator Azure Functions](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml)
+[![Document Uploader](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml)
 
 # Document AI Azure Pipeline (docproc)
 
