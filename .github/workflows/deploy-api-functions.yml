@@ -5,12 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'docproc/src/DocProcessing.Api/**'
+      - 'docproc/src/api/**'
+      - 'docproc/tests/DocProcessing.Api.Tests/**'
       - '.github/workflows/deploy-api-functions.yml'
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/DocProcessing.Api"
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/api"
   DOTNET_VERSION: "8.0.x"
 
 jobs:
@@ -29,7 +30,7 @@ jobs:
       - name: "Run Unit Tests"
         shell: bash
         run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          pushd './docproc'
           dotnet test --configuration Release --logger trx --results-directory ./TestResults
           popd
 

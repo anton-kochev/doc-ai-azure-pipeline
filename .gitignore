@@ -144,3 +144,4 @@ docproc/src/api/appsettings.json
 CHANGE-LOG.md
 /.claude/agents
 CLAUDE.md
+/docproc/src/api/output
