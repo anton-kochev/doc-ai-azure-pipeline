@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="9.10.0" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0"/>
         <PackageReference Include="Moq" Version="4.20.72" />
@@ -35,7 +36,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\common\DocProcessing.Infrastructure\DocProcessing.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\src\common\DocProcessing.Application\DocProcessing.Application.csproj" />
+      <ProjectReference Include="..\..\src\common\DocProcessing.Infrastructure\DocProcessing.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\tests\DocProcessing.TestUtilities\DocProcessing.TestUtilities.csproj" />
     </ItemGroup>
 
 </Project>

@@ -105,6 +105,41 @@ public sealed partial class DocumentService : IDocumentService
         return (newDocumentId, true);
     }
 
+    /// <inheritdoc />
+    public async Task<Document?> GetDocumentByIdAsync(Guid documentId, CancellationToken cancellationToken = default)
+    {
+        Document? document = await _dbContext.Documents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+
+        if (document is null)
+        {
+            LogDocumentNotFound(documentId);
+        }
+
+        return document;
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateDocumentMetadataAsync(Guid documentId, string metadataJson, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataJson);
+
+        Document? document = await _dbContext.Documents
+            .FirstOrDefaultAsync(d => d.DocumentId == documentId, cancellationToken);
+
+        if (document is null)
+        {
+            throw new InvalidOperationException($"Document with ID {documentId} not found");
+        }
+
+        document.MetadataJson = metadataJson;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        LogDocumentMetadataUpdated(documentId);
+    }
+
     // Source-generated logging methods
     [LoggerMessage(
         EventId = 1,
@@ -117,4 +152,16 @@ public sealed partial class DocumentService : IDocumentService
         Level = LogLevel.Information,
         Message = "Found existing document with same hash: DocumentId={DocumentId}, FileName={FileName}")]
     private partial void LogFoundExistingDocument(Guid documentId, string fileName);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Warning,
+        Message = "Document not found: DocumentId={DocumentId}")]
+    private partial void LogDocumentNotFound(Guid documentId);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = "Updated document metadata: DocumentId={DocumentId}")]
+    private partial void LogDocumentMetadataUpdated(Guid documentId);
 }

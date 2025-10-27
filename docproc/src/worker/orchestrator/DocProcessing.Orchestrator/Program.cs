@@ -24,7 +24,7 @@ IHost host = new HostBuilder()
         services.ConfigureFunctionsApplicationInsights();
 
         // Register application services
-        services.RegisterApplication();
+        services.RegisterApplication(context.Configuration);
 
         // Register infrastructure services
         services.RegisterInfrastructure(context.Configuration);

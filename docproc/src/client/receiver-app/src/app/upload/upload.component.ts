@@ -1,5 +1,5 @@
 import { HttpEventType } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -21,6 +21,7 @@ export class UploadComponent {
   readonly uploadError = signal<string | null>(null);
   readonly uploadSuccess = signal(false);
 
+  readonly #destroyRef = inject(DestroyRef);
   readonly #fileUploadService = inject(FileUploadService);
 
   onFileSelected(event: Event): void {
@@ -70,7 +71,7 @@ export class UploadComponent {
 
     this.#fileUploadService
       .uploadFile(file)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.#destroyRef))
       .subscribe({
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress) {

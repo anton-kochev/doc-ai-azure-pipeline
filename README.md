@@ -200,6 +200,8 @@ docproc/
 │   │   └── Dockerfile               # Docker configuration
 │   ├── DocProcessing.Api.Tests/     # Unit tests for API
 │   │   └── Services/                # Service layer tests
+│   ├── Infrastructure.Tests/        # Unit tests for Infrastructure layer
+│   │   └── Services/                # Service layer tests (e.g., ProcessJobServiceTests)
 │   ├── common/                      # Shared libraries (Clean Architecture layers)
 │   │   ├── DocProcessing.Domain/    # Domain entities (Document, ProcessJob, ProfileCatalog)
 │   │   ├── DocProcessing.Contracts/ # Shared contracts (ProcessDocumentMessage)
@@ -220,6 +222,10 @@ docproc/
 │   │           └── Functions/       # Durable Functions for workflow orchestration
 │   └── client/
 │       └── receiver-app/            # Angular 20.3 application
+├── tests/                           # Test projects and shared utilities
+│   ├── DocProcessing.TestUtilities/ # Shared test utilities (FakeLogger extensions, etc.)
+│   ├── DocProcessing.Application.Tests/ # Unit tests for Application layer
+│   └── README.md                    # Testing guide
 ├── ServiceBusQueueInspector/        # CLI tool for Service Bus queue inspection
 ├── ServiceBusQueueInspector.Tests/  # Tests for the inspector tool
 ├── docs/                            # Documentation

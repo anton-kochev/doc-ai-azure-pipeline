@@ -1,3 +1,4 @@
+using DocProcessing.Application.Configuration;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Infrastructure.Factories;
 using DocProcessing.Infrastructure.MessageBroker;
@@ -28,9 +29,10 @@ public static class DependencyInjection
         // Register TimeProvider for dependency injection
         services.AddSingleton(TimeProvider.System);
         
-        // Configure custom options
+        // Register configuration options
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
         services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
+        services.Configure<OcrOptions>(configuration.GetSection("Ocr"));
         
         // Register services
         services.AddScoped<IMessagingService, ServiceBusService>();

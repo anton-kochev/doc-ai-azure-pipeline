@@ -43,7 +43,7 @@ IHost host = new HostBuilder()
         services.RegisterInfrastructure(context.Configuration);
 
         // Register application services
-        services.RegisterApplication();
+        services.RegisterApplication(context.Configuration);
     })
     .Build();
 

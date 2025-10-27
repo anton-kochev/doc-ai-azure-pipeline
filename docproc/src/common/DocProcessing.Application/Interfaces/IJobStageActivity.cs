@@ -33,10 +33,17 @@ public interface IJobStageActivity
 /// </summary>
 public sealed class StageContext
 {
+    public StageContext(ProcessJobModel job, Dictionary<string, object> metadata, string correlationId)
+    {
+        Job = job;
+        Metadata = metadata;
+        CorrelationId = correlationId;
+    }
+
     /// <summary>
     /// Gets or sets the process job being executed.
     /// </summary>
-    public required ProcessJobModel Job { get; init; }
+    public ProcessJobModel Job { get; init; }
 
     /// <summary>
     /// Gets or sets additional metadata for the stage execution.
@@ -46,7 +53,7 @@ public sealed class StageContext
     /// <summary>
     /// Gets or sets the correlation ID for tracking.
     /// </summary>
-    public required string CorrelationId { get; init; }
+    public string CorrelationId { get; init; }
 }
 
 /// <summary>

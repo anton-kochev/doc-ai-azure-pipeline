@@ -1,27 +1,25 @@
-using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
-using DocProcessing.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
-using Moq;
 
-namespace Infrastructure.Tests;
+namespace Infrastructure.Tests.Services;
 
 public class ProcessJobServiceTests : IDisposable
 {
     private readonly InMemoryDbContext _dbContext;
-    private readonly Mock<ILogger<ProcessJobService>> _loggerMock;
+    private readonly FakeLogger<ProcessJobService> _logger;
     private readonly FakeTimeProvider _timeProvider;
     private readonly ProcessJobService _service;
 
     public ProcessJobServiceTests()
     {
         _dbContext = new InMemoryDbContext();
-        _loggerMock = new Mock<ILogger<ProcessJobService>>();
+        _logger = new FakeLogger<ProcessJobService>();
         _timeProvider = new FakeTimeProvider();
-        _service = new ProcessJobService(_dbContext, _loggerMock.Object, _timeProvider);
+        _service = new ProcessJobService(_dbContext, _logger, _timeProvider);
     }
 
     public void Dispose()
@@ -475,15 +473,8 @@ public class ProcessJobServiceTests : IDisposable
         // Act
         await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Debug,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Looking for existing job with idempotency key")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Debug, "Looking for existing job with idempotency key");
     }
 
     [Fact]
@@ -497,15 +488,8 @@ public class ProcessJobServiceTests : IDisposable
         // Act
         await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Created new process job")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Information, "Created new process job");
     }
 
     [Fact]
@@ -518,20 +502,13 @@ public class ProcessJobServiceTests : IDisposable
 
         // Create first job
         await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
-        _loggerMock.Reset();
 
         // Act - Try to create again
+        _logger.Collector.Clear(); // Clear logs from first creation
         await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Found existing non-terminal job")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Information, "Found existing non-terminal job");
     }
 
     [Fact]
@@ -713,20 +690,13 @@ public class ProcessJobServiceTests : IDisposable
         Guid documentId = Guid.NewGuid();
         byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
-        _loggerMock.Reset();
 
         // Act
+        _logger.Collector.Clear();
         await _service.StartProcessingAsync(jobId);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job transitioned to Processing")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Information, "Job transitioned to Processing");
     }
 
     [Fact]
@@ -738,15 +708,8 @@ public class ProcessJobServiceTests : IDisposable
         // Act
         await _service.StartProcessingAsync(nonExistentJobId);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("StartProcessing: Cannot update job. Job not found.")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
     }
 
     #endregion
@@ -872,20 +835,13 @@ public class ProcessJobServiceTests : IDisposable
         byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
         await _service.StartProcessingAsync(jobId);
-        _loggerMock.Reset();
 
         // Act
+        _logger.Collector.Clear();
         await _service.CompleteJobAsync(jobId);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job completed successfully.")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Information, "Job completed successfully");
     }
 
     [Fact]
@@ -897,15 +853,8 @@ public class ProcessJobServiceTests : IDisposable
         // Act
         await _service.CompleteJobAsync(nonExistentJobId);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Complete: Cannot update job. Job not found.")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
     }
 
     #endregion
@@ -1076,20 +1025,13 @@ public class ProcessJobServiceTests : IDisposable
         ];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
         await _service.StartProcessingAsync(jobId);
-        _loggerMock.Reset();
 
         // Act
+        _logger.Collector.Clear();
         await _service.FailJobAsync(jobId, "TEST_ERROR", "Test error");
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Job failed.")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Error, "Job failed");
     }
 
     [Fact]
@@ -1101,15 +1043,8 @@ public class ProcessJobServiceTests : IDisposable
         // Act
         await _service.FailJobAsync(nonExistentJobId);
 
-        // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Fail: Cannot update job. Job not found.")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        // Assert - Verify log entry was created with expected message
+        _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
     }
 
     #endregion

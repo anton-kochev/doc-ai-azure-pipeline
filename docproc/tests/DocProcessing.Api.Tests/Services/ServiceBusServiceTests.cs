@@ -2,7 +2,7 @@ using DocProcessing.Infrastructure.MessageBroker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace DocProcessing.Tests;
+namespace DocProcessing.Api.Tests.Services;
 
 public class ServiceBusServiceTests
 {

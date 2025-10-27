@@ -10,7 +10,7 @@ namespace DocProcessing.Application.Services;
 /// <summary>
 /// Implementation of process job management operations.
 /// </summary>
-public sealed class ProcessJobService : IProcessJobService
+public sealed partial class ProcessJobService : IProcessJobService
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<ProcessJobService> _logger;
@@ -40,14 +40,13 @@ public sealed class ProcessJobService : IProcessJobService
 
         if (job == null)
         {
-            _logger.LogError("Cannot retry job: Job not found. JobId={JobId}", jobId);
+            LogJobNotFoundForRetry(jobId);
             return false;
         }
 
         if (job.Status != ProcessJobStatus.Failed)
         {
-            _logger.LogWarning("Cannot retry job: Job is not in Failed state. JobId={JobId}, Status={Status}",
-                job.JobId, job.Status);
+            LogCannotRetryJobNotFailed(job.JobId, job.Status);
             return false;
         }
 
@@ -59,8 +58,7 @@ public sealed class ProcessJobService : IProcessJobService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Job transitioned to Pending for retry. JobId={JobId}, TotalAttempts={Attempts}",
-            job.JobId, job.Attempts);
+        LogJobTransitionedToPendingForRetry(job.JobId, job.Attempts);
 
         return true;
     }
@@ -105,9 +103,7 @@ public sealed class ProcessJobService : IProcessJobService
         // Compute idempotency key
         string idempotencyKey = ComputeIdempotencyKey(tenantId, sha256Hash, extractionProfile);
 
-        _logger.LogDebug(
-            "Looking for existing job with idempotency key: {IdempotencyKey}",
-            idempotencyKey);
+        LogLookingForExistingJob(idempotencyKey);
 
         // Check for existing non-terminal job with the same idempotency key
         ProcessJob? existingJob = await _dbContext.ProcessJobs
@@ -117,11 +113,7 @@ public sealed class ProcessJobService : IProcessJobService
 
         if (existingJob != null)
         {
-            _logger.LogInformation(
-                "Found existing non-terminal job: JobId={JobId}, Status={Status}, Stage={Stage}",
-                existingJob.JobId,
-                existingJob.Status,
-                existingJob.Stage);
+            LogFoundExistingNonTerminalJob(existingJob.JobId, existingJob.Status, existingJob.Stage);
 
             return (existingJob.JobId, false);
         }
@@ -144,11 +136,7 @@ public sealed class ProcessJobService : IProcessJobService
         _dbContext.ProcessJobs.Add(newJob);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "Created new process job: JobId={JobId}, DocumentId={DocumentId}, IdempotencyKey={IdempotencyKey}",
-            newJob.JobId,
-            newJob.DocumentId,
-            newJob.IdempotencyKey);
+        LogCreatedNewProcessJob(newJob.JobId, newJob.DocumentId, newJob.IdempotencyKey);
 
         return (newJob.JobId, true);
     }
@@ -170,10 +158,7 @@ public sealed class ProcessJobService : IProcessJobService
             {
                 if (job.Status != ProcessJobStatus.Pending)
                 {
-                    _logger.LogWarning(
-                        "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}",
-                        jobId,
-                        job.Status);
+                    LogCannotStartProcessingNotPending(jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Pending status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Processing;
@@ -185,12 +170,9 @@ public sealed class ProcessJobService : IProcessJobService
 
         if (success)
         {
-            _logger.LogInformation(
-                "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}",
-                updatedJob!.JobId,
-                updatedJob.Attempts);
+            LogJobTransitionedToProcessing(updatedJob!.JobId, updatedJob.Attempts);
         }
-        
+
         return success;
     }
 
@@ -211,10 +193,7 @@ public sealed class ProcessJobService : IProcessJobService
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
-                    _logger.LogWarning(
-                        "Cannot complete: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
-                        jobId,
-                        job.Status);
+                    LogCannotCompleteNotProcessing(jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Completed;
@@ -225,12 +204,9 @@ public sealed class ProcessJobService : IProcessJobService
         
         if (success)
         {
-            _logger.LogInformation(
-                "Job completed successfully. JobId={JobId}, Duration={Duration}",
-                updatedJob!.JobId,
-                updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
+            LogJobCompletedSuccessfully(updatedJob!.JobId, updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
         }
-        
+
         return success;
     }
 
@@ -253,10 +229,7 @@ public sealed class ProcessJobService : IProcessJobService
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
-                    _logger.LogWarning(
-                        "Cannot fail: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}",
-                        jobId,
-                        job.Status);
+                    LogCannotFailNotProcessing(jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Failed;
@@ -269,13 +242,9 @@ public sealed class ProcessJobService : IProcessJobService
         
         if (success)
         {
-            _logger.LogError(
-                "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}",
-                jobId,
-                errorCode,
-                errorMessage);
+            LogJobFailed(jobId, errorCode, errorMessage);
         }
-        
+
         return success;
     }
 
@@ -293,7 +262,7 @@ public sealed class ProcessJobService : IProcessJobService
 
             if (job == null)
             {
-                _logger.LogWarning("{Action}: Cannot update job. Job not found. JobId={JobId}", actionName, jobId);
+                LogCannotUpdateJobNotFound(actionName, jobId);
                 return (false, null);
             }
 
@@ -308,23 +277,13 @@ public sealed class ProcessJobService : IProcessJobService
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(
-                    ex,
-                    "{Action}: Invalid operation when updating job. JobId={JobId}, Message={Message}",
-                    actionName,
-                    job.JobId,
-                    ex.Message);
-                
+                LogInvalidOperationWhenUpdatingJob(ex, actionName, job.JobId, ex.Message);
+
                 return (false, Job: job);
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogWarning(
-                    ex,
-                    "{Action}: Concurrency conflict when updating job. JobId={JobId}, Attempt={Attempt}",
-                    actionName,
-                    job.JobId,
-                    attempt + 1);
+                LogConcurrencyConflictWhenUpdatingJob(ex, actionName, job.JobId, attempt + 1);
 
                 // Detach the conflicted entity to allow retry
                 _dbContext.Entry(job).State = EntityState.Detached;
@@ -345,4 +304,94 @@ public sealed class ProcessJobService : IProcessJobService
         return (Success: false, Job: null);
     }
 
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Error,
+        Message = "Cannot retry job: Job not found. JobId={JobId}")]
+    private partial void LogJobNotFoundForRetry(Guid jobId);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Warning,
+        Message = "Cannot retry job: Job is not in Failed state. JobId={JobId}, Status={Status}")]
+    private partial void LogCannotRetryJobNotFailed(Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Information,
+        Message = "Job transitioned to Pending for retry. JobId={JobId}, TotalAttempts={Attempts}")]
+    private partial void LogJobTransitionedToPendingForRetry(Guid jobId, int attempts);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Debug,
+        Message = "Looking for existing job with idempotency key: {IdempotencyKey}")]
+    private partial void LogLookingForExistingJob(string idempotencyKey);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "Found existing non-terminal job: JobId={JobId}, Status={Status}, Stage={Stage}")]
+    private partial void LogFoundExistingNonTerminalJob(Guid jobId, ProcessJobStatus status, ProcessJobStage stage);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = "Created new process job: JobId={JobId}, DocumentId={DocumentId}, IdempotencyKey={IdempotencyKey}")]
+    private partial void LogCreatedNewProcessJob(Guid jobId, Guid documentId, string idempotencyKey);
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Warning,
+        Message = "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotStartProcessingNotPending(Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 8,
+        Level = LogLevel.Information,
+        Message = "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}")]
+    private partial void LogJobTransitionedToProcessing(Guid jobId, int attempts);
+
+    [LoggerMessage(
+        EventId = 9,
+        Level = LogLevel.Warning,
+        Message = "Cannot complete: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotCompleteNotProcessing(Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 10,
+        Level = LogLevel.Information,
+        Message = "Job completed successfully. JobId={JobId}, Duration={Duration}")]
+    private partial void LogJobCompletedSuccessfully(Guid jobId, TimeSpan? duration);
+
+    [LoggerMessage(
+        EventId = 11,
+        Level = LogLevel.Warning,
+        Message = "Cannot fail: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotFailNotProcessing(Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 12,
+        Level = LogLevel.Error,
+        Message = "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}")]
+    private partial void LogJobFailed(Guid jobId, string? errorCode, string? errorMessage);
+
+    [LoggerMessage(
+        EventId = 13,
+        Level = LogLevel.Warning,
+        Message = "{Action}: Cannot update job. Job not found. JobId={JobId}")]
+    private partial void LogCannotUpdateJobNotFound(string action, Guid jobId);
+
+    [LoggerMessage(
+        EventId = 14,
+        Level = LogLevel.Warning,
+        Message = "{Action}: Invalid operation when updating job. JobId={JobId}, Message={Message}")]
+    private partial void LogInvalidOperationWhenUpdatingJob(Exception exception, string action, Guid jobId, string message);
+
+    [LoggerMessage(
+        EventId = 15,
+        Level = LogLevel.Warning,
+        Message = "{Action}: Concurrency conflict when updating job. JobId={JobId}, Attempt={Attempt}")]
+    private partial void LogConcurrencyConflictWhenUpdatingJob(Exception exception, string action, Guid jobId, int attempt);
 }

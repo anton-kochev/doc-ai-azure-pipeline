@@ -57,4 +57,20 @@ public interface IDocumentService
         byte[] sha256Hash,
         string uploadedBy,
         Guid? tenantId = null);
+
+    /// <summary>
+    /// Gets a document by its ID.
+    /// </summary>
+    /// <param name="documentId">The document ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The document, or null if not found.</returns>
+    Task<Domain.Entities.Document?> GetDocumentByIdAsync(Guid documentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the metadata JSON field of a document.
+    /// </summary>
+    /// <param name="documentId">The document ID.</param>
+    /// <param name="metadataJson">The JSON metadata to store.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task UpdateDocumentMetadataAsync(Guid documentId, string metadataJson, CancellationToken cancellationToken = default);
 }

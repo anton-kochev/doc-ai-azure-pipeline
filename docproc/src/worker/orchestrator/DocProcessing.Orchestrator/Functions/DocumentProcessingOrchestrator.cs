@@ -82,20 +82,17 @@ public class DocumentProcessingOrchestrator
                 job = job with { Stage = stage };
 
                 // Build stage context
-                StageContext stageContext = new()
+                Dictionary<string, object> metadata = new()
                 {
-                    Job = job,
-                    CorrelationId = input.CorrelationId,
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["JobId"] = jobId.ToString(),
-                        ["DocumentId"] = input.DocumentId ?? string.Empty,
-                        ["BlobContainer"] = input.BlobContainer ?? string.Empty,
-                        ["BlobPath"] = input.BlobPath ?? string.Empty,
-                        ["TenantId"] = input.TenantId ?? string.Empty,
-                        ["ExtractionProfile"] = input.ExtractionProfile ?? string.Empty
-                    }
+                    ["JobId"] = jobId.ToString(),
+                    ["DocumentId"] = input.DocumentId ?? string.Empty,
+                    ["BlobContainer"] = input.BlobContainer ?? string.Empty,
+                    ["BlobPath"] = input.BlobPath ?? string.Empty,
+                    ["TenantId"] = input.TenantId ?? string.Empty,
+                    ["ExtractionProfile"] = input.ExtractionProfile ?? string.Empty
                 };
+
+                StageContext stageContext = new(job, metadata, input.CorrelationId);
 
                 // Call the appropriate stage activity
                 string activityName = GetActivityNameForStage(stage);

@@ -12,7 +12,7 @@ namespace DocProcessing.Orchestrator.Functions;
 /// Azure Function that listens to Service Bus queue for document processing requests
 /// and starts Durable Function orchestrations.
 /// </summary>
-public class DocumentIngestionTrigger
+public partial class DocumentIngestionTrigger
 {
     private readonly ILogger<DocumentIngestionTrigger> _logger;
 
@@ -37,10 +37,7 @@ public class DocumentIngestionTrigger
             ["MessageId"] = message.MessageId
         }))
         {
-            _logger.LogInformation(
-                "Received document processing message. MessageId: {MessageId}, CorrelationId: {CorrelationId}",
-                message.MessageId,
-                correlationId);
+            LogReceivedDocumentProcessingMessage(message.MessageId, correlationId);
 
             ProcessDocumentMessage? payload = null;
 
@@ -59,9 +56,7 @@ public class DocumentIngestionTrigger
 
                 if (!isValid)
                 {
-                    _logger.LogError(
-                        "Message validation failed: {ErrorMessage}. Message will be dead-lettered.",
-                        errorMessage);
+                    LogMessageValidationFailed(errorMessage);
 
                     await messageActions.DeadLetterMessageAsync(
                         message,
@@ -71,31 +66,21 @@ public class DocumentIngestionTrigger
                     return;
                 }
 
-                _logger.LogInformation(
-                    "Message validated successfully. JobId: {JobId}, DocumentId: {DocumentId}, TenantId: {TenantId}",
-                    payload!.JobId,
-                    payload.DocumentId,
-                    payload.TenantId);
+                LogMessageValidatedSuccessfully(payload!.JobId, payload.DocumentId, payload.TenantId);
 
                 // Start durable orchestration
                 string orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
                     nameof(DocumentProcessingOrchestrator),
                     payload);
 
-                _logger.LogInformation(
-                    "Started orchestration instance: {InstanceId} for JobId: {JobId}. IdempotencyKey: {IdempotencyKey}",
-                    orchestrationInstanceId,
-                    payload.JobId,
-                    payload.IdempotencyKey);
+                LogStartedOrchestrationInstance(orchestrationInstanceId, payload.JobId, payload.IdempotencyKey);
 
                 // Complete the message
                 await messageActions.CompleteMessageAsync(message);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Failed to deserialize message. Message will be dead-lettered.");
+                LogFailedToDeserializeMessage(ex);
 
                 await messageActions.DeadLetterMessageAsync(
                     message,
@@ -104,14 +89,48 @@ public class DocumentIngestionTrigger
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Unexpected error processing message for JobId: {JobId}. Message will be abandoned.",
-                    payload?.JobId ?? "unknown");
+                LogUnexpectedErrorProcessingMessage(ex, payload?.JobId ?? "unknown");
 
                 // Abandon message to retry
                 await messageActions.AbandonMessageAsync(message);
             }
         }
     }
+
+    // Source-generated logging methods
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = "Received document processing message. MessageId: {MessageId}, CorrelationId: {CorrelationId}")]
+    private partial void LogReceivedDocumentProcessingMessage(string messageId, string correlationId);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Error,
+        Message = "Message validation failed: {ErrorMessage}. Message will be dead-lettered.")]
+    private partial void LogMessageValidationFailed(string? errorMessage);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Information,
+        Message = "Message validated successfully. JobId: {JobId}, DocumentId: {DocumentId}, TenantId: {TenantId}")]
+    private partial void LogMessageValidatedSuccessfully(string jobId, string? documentId, string? tenantId);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = "Started orchestration instance: {InstanceId} for JobId: {JobId}. IdempotencyKey: {IdempotencyKey}")]
+    private partial void LogStartedOrchestrationInstance(string instanceId, string jobId, string? idempotencyKey);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Error,
+        Message = "Failed to deserialize message. Message will be dead-lettered.")]
+    private partial void LogFailedToDeserializeMessage(Exception exception);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Error,
+        Message = "Unexpected error processing message for JobId: {JobId}. Message will be abandoned.")]
+    private partial void LogUnexpectedErrorProcessingMessage(Exception exception, string jobId);
 }

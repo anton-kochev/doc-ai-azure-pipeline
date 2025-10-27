@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
@@ -32,6 +33,9 @@ public sealed partial class BlobStorageService : IStorageService
     /// </exception>
     public async Task<UploadResult> UploadAsync(string fileName, Stream fileStream, string? contentType = null, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        ArgumentNullException.ThrowIfNull(fileStream);
+
         ValidateConfiguration();
 
         // Configure retry options for resilience against transient failures
@@ -97,11 +101,133 @@ public sealed partial class BlobStorageService : IStorageService
         return result;
     }
 
+    /// <inheritdoc />
+    public async Task<Stream> DownloadBlobAsync(string containerName, string blobPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
+
+        ValidateConfiguration();
+
+        BlobServiceClient blobServiceClient = CreateBlobServiceClient();
+        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+
+        LogDownloadingBlob(containerName, blobPath);
+
+        Azure.Response<Azure.Storage.Blobs.Models.BlobDownloadResult> response =
+            await blobClient.DownloadContentAsync(cancellationToken);
+
+        MemoryStream memoryStream = new();
+        await response.Value.Content.ToStream().CopyToAsync(memoryStream, cancellationToken);
+        memoryStream.Position = 0;
+
+        LogBlobDownloaded(containerName, blobPath, memoryStream.Length);
+
+        return memoryStream;
+    }
+
+    /// <inheritdoc />
+    public async Task<string> UploadJsonAsync<T>(string containerName, string blobPath, T data, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
+        ArgumentNullException.ThrowIfNull(data);
+
+        ValidateConfiguration();
+
+        BlobServiceClient blobServiceClient = CreateBlobServiceClient();
+        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
+        // Ensure the container exists
+        await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+
+        BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+
+        // Serialize to JSON
+        var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(data, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        LogUploadingJson(containerName, blobPath, jsonBytes.Length);
+
+        // Upload with JSON content type
+        await using var stream = new MemoryStream(jsonBytes);
+        await blobClient.UploadAsync(stream, new Azure.Storage.Blobs.Models.BlobUploadOptions
+        {
+            HttpHeaders = new Azure.Storage.Blobs.Models.BlobHttpHeaders
+            {
+                ContentType = "application/json"
+            }
+        }, cancellationToken);
+
+        LogJsonUploaded(containerName, blobPath);
+
+        return $"{containerName}/{blobPath}";
+    }
+
+    /// <inheritdoc />
+    public async Task<T?> DownloadJsonAsync<T>(string containerName, string blobPath, CancellationToken cancellationToken = default) where T : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
+
+        ValidateConfiguration();
+
+        BlobServiceClient blobServiceClient = CreateBlobServiceClient();
+        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+
+        // Check if blob exists
+        if (!await blobClient.ExistsAsync(cancellationToken))
+        {
+            LogBlobNotFound(containerName, blobPath);
+            return null;
+        }
+
+        LogDownloadingJson(containerName, blobPath);
+
+        Azure.Response<Azure.Storage.Blobs.Models.BlobDownloadResult> response =
+            await blobClient.DownloadContentAsync(cancellationToken);
+
+        var result = JsonSerializer.Deserialize<T>(response.Value.Content.ToMemory().Span);
+
+        LogJsonDownloaded(containerName, blobPath);
+
+        return result;
+    }
+
     private void ValidateConfiguration()
     {
         if (string.IsNullOrEmpty(_options.ConnectionString) && string.IsNullOrEmpty(_options.AccountName))
         {
             throw new InvalidOperationException("Either Azure Storage connection string or account name must be configured");
+        }
+    }
+
+    private BlobServiceClient CreateBlobServiceClient()
+    {
+        BlobClientOptions clientOptions = new()
+        {
+            Retry =
+            {
+                Mode = RetryMode.Exponential,
+                MaxRetries = _options.MaxRetries,
+                Delay = TimeSpan.FromSeconds(_options.RetryDelaySeconds),
+                MaxDelay = TimeSpan.FromSeconds(_options.MaxRetryDelaySeconds),
+                NetworkTimeout = TimeSpan.FromSeconds(100)
+            }
+        };
+
+        if (!string.IsNullOrEmpty(_options.ConnectionString))
+        {
+            return new BlobServiceClient(_options.ConnectionString, clientOptions);
+        }
+        else
+        {
+            Uri blobServiceUri = new($"https://{_options.AccountName}.blob.core.windows.net");
+            return new BlobServiceClient(blobServiceUri, new DefaultAzureCredential(), clientOptions);
         }
     }
 
@@ -111,4 +237,46 @@ public sealed partial class BlobStorageService : IStorageService
         Level = LogLevel.Debug,
         Message = "Configured Blob Storage retry policy: MaxRetries={MaxRetries}, Delay={Delay}s, MaxDelay={MaxDelay}s")]
     private partial void LogBlobStorageRetryPolicy(int maxRetries, int delay, int maxDelay);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Information,
+        Message = "Downloading blob from container '{ContainerName}', path '{BlobPath}'")]
+    private partial void LogDownloadingBlob(string containerName, string blobPath);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Information,
+        Message = "Blob downloaded from container '{ContainerName}', path '{BlobPath}', size {SizeBytes} bytes")]
+    private partial void LogBlobDownloaded(string containerName, string blobPath, long sizeBytes);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Information,
+        Message = "Uploading JSON to container '{ContainerName}', path '{BlobPath}', size {SizeBytes} bytes")]
+    private partial void LogUploadingJson(string containerName, string blobPath, int sizeBytes);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "JSON uploaded to container '{ContainerName}', path '{BlobPath}'")]
+    private partial void LogJsonUploaded(string containerName, string blobPath);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = "Downloading JSON from container '{ContainerName}', path '{BlobPath}'")]
+    private partial void LogDownloadingJson(string containerName, string blobPath);
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = "JSON downloaded from container '{ContainerName}', path '{BlobPath}'")]
+    private partial void LogJsonDownloaded(string containerName, string blobPath);
+
+    [LoggerMessage(
+        EventId = 8,
+        Level = LogLevel.Warning,
+        Message = "Blob not found in container '{ContainerName}', path '{BlobPath}'")]
+    private partial void LogBlobNotFound(string containerName, string blobPath);
 }
