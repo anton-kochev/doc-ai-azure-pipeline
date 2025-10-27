@@ -1,19 +1,16 @@
 using DocProcessing.Infrastructure.MessageBroker;
+using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 
 namespace DocProcessing.Api.Tests.Services;
 
 public class ServiceBusServiceTests
 {
-    private readonly Mock<ILogger<ServiceBusService>> _loggerMock;
-
-    public ServiceBusServiceTests()
+    private FakeLogger<ServiceBusService> CreateLogger()
     {
-        _loggerMock = new Mock<ILogger<ServiceBusService>>();
-
-        // Setup logger mock to support source-generated logging
-        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        return new FakeLogger<ServiceBusService>();
     }
 
     #region Constructor Tests
@@ -22,6 +19,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithNullQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = null!,
@@ -30,7 +28,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -39,6 +37,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithEmptyQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "",
@@ -47,7 +46,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -56,6 +55,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithWhitespaceQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "   ",
@@ -64,7 +64,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -73,6 +73,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithNoConnectionStringOrNamespace_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -82,7 +83,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
     }
@@ -91,6 +92,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithEmptyConnectionStringAndEmptyNamespace_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -100,7 +102,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
     }
@@ -109,6 +111,7 @@ public class ServiceBusServiceTests
     public void Constructor_WithWhitespaceConnectionStringAndWhitespaceNamespace_ThrowsInvalidOperationException()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -118,7 +121,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(_loggerMock.Object, options));
+            new ServiceBusService(logger, options));
 
         Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
     }
@@ -127,6 +130,7 @@ public class ServiceBusServiceTests
     public async Task Constructor_LogsConnectionStringInitialization_WhenConnectionStringProvided()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -134,23 +138,17 @@ public class ServiceBusServiceTests
         });
 
         // Act
-        await using ServiceBusService service = new(_loggerMock.Object, options);
+        await using ServiceBusService service = new(logger, options);
 
         // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Initializing Service Bus client with connection string")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        logger.VerifyWasCalled(LogLevel.Information, "Initializing Service Bus client with connection string");
     }
 
     [Fact]
     public async Task Constructor_LogsSenderCreation_WhenConnectionStringProvided()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -158,23 +156,17 @@ public class ServiceBusServiceTests
         });
 
         // Act
-        await using ServiceBusService service = new(_loggerMock.Object, options);
+        await using ServiceBusService service = new(logger, options);
 
         // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Service Bus sender created for queue: test-queue")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        logger.VerifyWasCalled(LogLevel.Information, "Service Bus sender created for queue");
     }
 
     [Fact]
     public async Task Constructor_LogsManagedIdentityInitialization_WhenNamespaceProvidedAndNoConnectionString()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
@@ -185,7 +177,7 @@ public class ServiceBusServiceTests
         // but we can verify the logging happens before the client creation fails
         try
         {
-            await using ServiceBusService service = new(_loggerMock.Object, options);
+            await using ServiceBusService service = new(logger, options);
         }
         catch
         {
@@ -193,14 +185,7 @@ public class ServiceBusServiceTests
         }
 
         // Assert - verify the logging happened
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Initializing Service Bus client with Managed Identity for namespace: test.servicebus.windows.net")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        logger.VerifyWasCalled(LogLevel.Information, "Initializing Service Bus client with Managed Identity");
     }
 
     #endregion
@@ -277,13 +262,14 @@ public class ServiceBusServiceTests
     public async Task DisposeAsync_CanBeCalledMultipleTimes()
     {
         // Arrange
+        var logger = CreateLogger();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test123=="
         });
 
-        ServiceBusService service = new(_loggerMock.Object, options);
+        ServiceBusService service = new(logger, options);
 
         // Act & Assert - Should not throw
         await service.DisposeAsync();

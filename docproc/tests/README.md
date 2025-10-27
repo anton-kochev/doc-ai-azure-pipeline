@@ -2,11 +2,57 @@
 
 This guide covers testing practices for the DocProcessing solution, focusing on testing source-generated logging.
 
-## Testing Source-Generated Logging
+## Choosing the Right Logger for Tests
 
-The solution uses **compile-time logging source generation** via `[LoggerMessage]` attributes for better performance. Use `FakeLogger<T>` from `Microsoft.Extensions.Diagnostics.Testing` to test logging behavior.
+The solution uses **compile-time logging source generation** via `[LoggerMessage]` attributes for better performance. Choose the appropriate logger based on whether you need to test logging behavior:
 
-### Setup
+| Logger Type | Use When | Example |
+|-------------|----------|---------|
+| **`FakeLogger<T>`** | Testing logging behavior (asserting on log messages) | `_logger.VerifyWasCalled(LogLevel.Information, "Job created")` |
+| **`NullLogger<T>`** | Logger is only a dependency (no logging assertions) | `new MyService(NullLogger<MyService>.Instance)` |
+
+**Quick Rule:** If your test uses `_logger.VerifyWasCalled()`, `_logger.Collector`, or checks log content → use `FakeLogger<T>`. Otherwise → use `NullLogger<T>`.
+
+### When to Use NullLogger<T>
+
+Use `NullLogger<T>` when your tests don't verify logging behavior but the service requires an `ILogger<T>` dependency:
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+public class BlobStorageServiceTests
+{
+    private readonly ILogger<BlobStorageService> _logger = NullLogger<BlobStorageService>.Instance;
+    private readonly BlobStorageService _service;
+
+    public BlobStorageServiceTests()
+    {
+        // Logger is passed to service but no logging is tested
+        _service = new BlobStorageService(options, _logger);
+    }
+
+    [Fact]
+    public async Task UploadAsync_WithValidFile_UploadsSuccessfully()
+    {
+        // Test focuses on upload behavior, not logging
+        var result = await _service.UploadAsync("file.txt", stream);
+        Assert.NotNull(result);
+    }
+}
+```
+
+**Benefits of NullLogger<T>:**
+- Lightweight - no overhead from capturing logs
+- Clear intent - signals that logging is not tested
+- Built-in - available in `Microsoft.Extensions.Logging.Abstractions`
+- Singleton - use `NullLogger<T>.Instance` for better performance
+
+### When to Use FakeLogger<T>
+
+Use `FakeLogger<T>` when you need to verify logging behavior in your tests.
+
+#### Setup
 
 Add the shared test utilities reference to your test project:
 
@@ -23,7 +69,7 @@ using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging.Testing;
 ```
 
-### Basic Usage
+#### Basic Usage
 
 ```csharp
 public class MyServiceTests
@@ -49,7 +95,7 @@ public class MyServiceTests
 }
 ```
 
-### Key Principles
+#### Key Principles
 
 **1. Use Substring Matching, Not Exact Messages**
 
@@ -101,7 +147,7 @@ _logger.VerifyWasCalled(LogLevel.Error, "Operation failed");
 _logger.VerifyWasCalled(LogLevel.Debug, "Looking for existing job");
 ```
 
-### VerifyWasCalled Extension Method
+#### VerifyWasCalled Extension Method
 
 The `VerifyWasCalled` extension method simplifies log assertions:
 
@@ -125,7 +171,7 @@ Log entries found:
 [Warning] Job already exists
 ```
 
-### Advanced Scenarios
+#### Advanced Scenarios
 
 **Verify Log Parameters**
 
@@ -161,7 +207,8 @@ public async Task ProcessMultipleItems_LogsAll()
 ## Examples
 
 See comprehensive examples in:
-- **Infrastructure.Tests/Services/ProcessJobServiceTests.cs** - Shows all patterns and best practices
+- **FakeLogger<T> usage**: `Infrastructure.Tests/Services/ProcessJobServiceTests.cs` - Tests logging behavior with assertions
+- **NullLogger<T> usage**: `DocProcessing.Api.Tests/Services/BlobStorageServiceTests.cs` - Logger as dependency only
 
 ## Why FakeLogger Over Moq?
 

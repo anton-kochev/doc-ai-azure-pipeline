@@ -6,7 +6,9 @@ using DocProcessing.Application.Pipeline;
 using DocProcessing.Application.Services;
 using DocProcessing.Application.Services.OCR;
 using DocProcessing.Domain.Entities;
+using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -18,7 +20,7 @@ public sealed class OcrStageActivityTests
     private readonly Mock<IOcrService> _mockOcrService;
     private readonly Mock<IStorageService> _mockStorageService;
     private readonly Mock<IDocumentService> _mockDocumentService;
-    private readonly Mock<ILogger<OcrStageActivity>> _mockLogger;
+    private readonly FakeLogger<OcrStageActivity> _logger;
     private readonly Mock<IOptions<OcrOptions>> _mockOptions;
     private readonly OcrStageActivity _sut;
 
@@ -27,11 +29,8 @@ public sealed class OcrStageActivityTests
         _mockOcrService = new Mock<IOcrService>();
         _mockStorageService = new Mock<IStorageService>();
         _mockDocumentService = new Mock<IDocumentService>();
-        _mockLogger = new Mock<ILogger<OcrStageActivity>>();
+        _logger = new FakeLogger<OcrStageActivity>();
         _mockOptions = new Mock<IOptions<OcrOptions>>();
-
-        // Setup logger to enable all log levels for compile-time logging
-        _mockLogger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
         _mockOptions.Setup(x => x.Value).Returns(new OcrOptions
         {
@@ -45,7 +44,7 @@ public sealed class OcrStageActivityTests
             _mockOcrService.Object,
             _mockStorageService.Object,
             _mockDocumentService.Object,
-            _mockLogger.Object,
+            _logger,
             _mockOptions.Object);
     }
 
@@ -217,14 +216,7 @@ public sealed class OcrStageActivityTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.ErrorCode);
-        _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-            Times.AtLeastOnce);
+        _logger.VerifyWasCalled(LogLevel.Error, "OCR stage failed");
     }
 
     [Fact]

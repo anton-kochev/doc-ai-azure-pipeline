@@ -1,28 +1,25 @@
 using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
+using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
-using Moq;
 
 namespace Infrastructure.Tests;
 
 public class DocumentServiceTests : IDisposable
 {
     private readonly InMemoryDbContext _dbContext;
-    private readonly Mock<ILogger<DocumentService>> _loggerMock;
+    private readonly FakeLogger<DocumentService> _logger;
     private readonly FakeTimeProvider _timeProvider;
     private readonly DocumentService _service;
 
     public DocumentServiceTests()
     {
         _dbContext = new InMemoryDbContext();
-        _loggerMock = new Mock<ILogger<DocumentService>>();
-
-        // Setup logger mock to support source-generated logging
-        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-
+        _logger = new FakeLogger<DocumentService>();
         _timeProvider = new FakeTimeProvider();
-        _service = new DocumentService(_dbContext, _loggerMock.Object, _timeProvider);
+        _service = new DocumentService(_dbContext, _logger, _timeProvider);
     }
 
     public void Dispose()
@@ -195,14 +192,7 @@ public class DocumentServiceTests : IDisposable
             uploadedBy);
 
         // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Created document record")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        _logger.VerifyWasCalled(LogLevel.Information, "Created document record");
     }
 
     [Fact]
@@ -461,10 +451,7 @@ public class DocumentServiceTests : IDisposable
             sha256Hash,
             "user@example.com");
 
-        _loggerMock.Reset(); // Reset to clear the log from CreateDocumentAsync
-
-        // Re-setup logger mock after reset to support source-generated logging
-        _loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        _logger.Collector.Clear(); // Clear logs from CreateDocumentAsync
 
         // Act
         await _service.GetOrCreateDocumentAsync(
@@ -478,14 +465,7 @@ public class DocumentServiceTests : IDisposable
             "user@example.com");
 
         // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Found existing document with same hash")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        _logger.VerifyWasCalled(LogLevel.Information, "Found existing document with same hash");
     }
 
     [Fact]
@@ -507,14 +487,7 @@ public class DocumentServiceTests : IDisposable
             "user@example.com");
 
         // Assert
-        _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Created document record")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        _logger.VerifyWasCalled(LogLevel.Information, "Created document record");
     }
 
     [Fact]

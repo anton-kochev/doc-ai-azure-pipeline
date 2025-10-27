@@ -1,12 +1,13 @@
 using DocProcessing.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace DocProcessing.Api.Tests.Services;
 
 public class BlobStorageServiceTests
 {
-    private readonly Mock<ILogger<BlobStorageService>> _loggerMock = new();
+    private readonly ILogger<BlobStorageService> _logger = NullLogger<BlobStorageService>.Instance;
 
     #region Constructor Tests
 
@@ -21,7 +22,7 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options, _loggerMock.Object));
+        Exception? exception = Record.Exception(() => new BlobStorageService(options, _logger));
         Assert.Null(exception);
     }
 
@@ -36,7 +37,7 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options, _loggerMock.Object));
+        Exception? exception = Record.Exception(() => new BlobStorageService(options, _logger));
         Assert.Null(exception);
     }
 
@@ -55,7 +56,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options, _loggerMock.Object);
+        BlobStorageService service = new(options, _logger);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
@@ -76,7 +77,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options, _loggerMock.Object);
+        BlobStorageService service = new(options, _logger);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
@@ -97,7 +98,7 @@ public class BlobStorageServiceTests
             ContainerName = "test-container"
         });
 
-        BlobStorageService service = new(options, _loggerMock.Object);
+        BlobStorageService service = new(options, _logger);
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
