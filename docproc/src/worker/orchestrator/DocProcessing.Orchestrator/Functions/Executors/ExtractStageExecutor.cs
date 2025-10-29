@@ -13,15 +13,19 @@ public sealed class ExtractStageExecutor
 {
     private readonly ILogger<ExtractStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
+    private readonly TimeProvider _timeProvider;
 
     public ExtractStageExecutor(
         ILogger<ExtractStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory)
+        IPipelineActivityFactory pipelineActivityFactory,
+        TimeProvider timeProvider)
     {
-        _logger = 
+        _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
+        _timeProvider =
+            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(ExtractStageExecutor))]
@@ -56,7 +60,7 @@ public sealed class ExtractStageExecutor
                 output: new { DataExtracted = true },
                 metadata: new Dictionary<string, object>
                 {
-                    ["CompletedAt"] = DateTime.UtcNow
+                    ["CompletedAt"] = _timeProvider.GetUtcNow()
                 });
         }
         catch (Exception ex)

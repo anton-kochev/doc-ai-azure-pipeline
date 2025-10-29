@@ -13,15 +13,19 @@ public sealed class EmbedStageExecutor
 {
     private readonly ILogger<EmbedStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
+    private readonly TimeProvider _timeProvider;
 
     public EmbedStageExecutor(
         ILogger<EmbedStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory)
+        IPipelineActivityFactory pipelineActivityFactory,
+        TimeProvider timeProvider)
     {
-        _logger = 
+        _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
+        _timeProvider =
+            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(EmbedStageExecutor))]
@@ -55,7 +59,7 @@ public sealed class EmbedStageExecutor
                 output: new { EmbeddingsGenerated = true },
                 metadata: new Dictionary<string, object>
                 {
-                    ["CompletedAt"] = DateTime.UtcNow
+                    ["CompletedAt"] = _timeProvider.GetUtcNow()
                 });
         }
         catch (Exception ex)

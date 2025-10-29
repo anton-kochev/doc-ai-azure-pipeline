@@ -10,6 +10,7 @@ using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 
@@ -22,6 +23,7 @@ public sealed class OcrStageActivityTests
     private readonly Mock<IDocumentService> _mockDocumentService;
     private readonly FakeLogger<OcrStageActivity> _logger;
     private readonly Mock<IOptions<OcrOptions>> _mockOptions;
+    private readonly FakeTimeProvider _timeProvider;
     private readonly OcrStageActivity _sut;
 
     public OcrStageActivityTests()
@@ -31,6 +33,7 @@ public sealed class OcrStageActivityTests
         _mockDocumentService = new Mock<IDocumentService>();
         _logger = new FakeLogger<OcrStageActivity>();
         _mockOptions = new Mock<IOptions<OcrOptions>>();
+        _timeProvider = new FakeTimeProvider();
 
         _mockOptions.Setup(x => x.Value).Returns(new OcrOptions
         {
@@ -398,7 +401,7 @@ public sealed class OcrStageActivityTests
             $"correlation-{jobId}");
     }
 
-    private static Document CreateTestDocument(Guid documentId, string tenantId, string blobPath)
+    private Document CreateTestDocument(Guid documentId, string tenantId, string blobPath)
     {
         return new Document
         {
@@ -411,12 +414,12 @@ public sealed class OcrStageActivityTests
             BlobPath = blobPath,
             BlobETag = "etag-123",
             UploadedBy = "system",
-            UploadedAtUtc = DateTime.UtcNow,
+            UploadedAtUtc = _timeProvider.GetUtcNow().DateTime,
             Status = DocumentStatus.Uploaded
         };
     }
 
-    private static OcrResult CreateTestOcrResult(Guid documentId, Guid jobId)
+    private OcrResult CreateTestOcrResult(Guid documentId, Guid jobId)
     {
         return new OcrResult(
             documentId,
@@ -424,7 +427,7 @@ public sealed class OcrStageActivityTests
             new OcrMetadata(
                 "Mock",
                 2,
-                DateTimeOffset.UtcNow,
+                _timeProvider.GetUtcNow(),
                 TimeSpan.FromSeconds(5),
                 0.95,
                 totalTextBlocks: 10,

@@ -2,6 +2,7 @@ using DocProcessing.Infrastructure.MessageBroker;
 using DocProcessing.Infrastructure.MessageBroker.ServiceBus;
 using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 namespace DocProcessing.Api.Tests.Services;
 
@@ -10,6 +11,11 @@ public class ServiceBusServiceTests
     private FakeLogger<ServiceBusService> CreateLogger()
     {
         return new FakeLogger<ServiceBusService>();
+    }
+
+    private FakeTimeProvider CreateTimeProvider()
+    {
+        return new FakeTimeProvider();
     }
 
     private Mock<IServiceBusSenderFactory> CreateMockFactory()
@@ -28,6 +34,7 @@ public class ServiceBusServiceTests
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
+        FakeTimeProvider timeProvider = CreateTimeProvider();
         Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
@@ -37,7 +44,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, factory.Object));
+            new ServiceBusService(logger, options, timeProvider, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -47,6 +54,7 @@ public class ServiceBusServiceTests
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
+        FakeTimeProvider timeProvider = CreateTimeProvider();
         Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
@@ -56,7 +64,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, factory.Object));
+            new ServiceBusService(logger, options, timeProvider, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -66,6 +74,7 @@ public class ServiceBusServiceTests
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
+        FakeTimeProvider timeProvider = CreateTimeProvider();
         Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
@@ -75,7 +84,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, factory.Object));
+            new ServiceBusService(logger, options, timeProvider, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -96,6 +105,7 @@ public class ServiceBusServiceTests
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
+        FakeTimeProvider timeProvider = CreateTimeProvider();
         Mock<IServiceBusSender> mockSender = new();
         Mock<IServiceBusSenderFactory> mockFactory = new();
         mockFactory.Setup(f => f.CreateSender(It.IsAny<string>()))
@@ -107,7 +117,7 @@ public class ServiceBusServiceTests
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test123=="
         });
 
-        ServiceBusService service = new(logger, options, mockFactory.Object);
+        ServiceBusService service = new(logger, options, timeProvider, mockFactory.Object);
 
         // Act
         await service.DisposeAsync();

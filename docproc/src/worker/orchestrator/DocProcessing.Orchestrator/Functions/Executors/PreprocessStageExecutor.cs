@@ -13,15 +13,19 @@ public sealed class PreprocessStageExecutor
 {
     private readonly ILogger<PreprocessStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
+    private readonly TimeProvider _timeProvider;
 
     public PreprocessStageExecutor(
         ILogger<PreprocessStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory)
+        IPipelineActivityFactory pipelineActivityFactory,
+        TimeProvider timeProvider)
     {
         _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
+        _timeProvider =
+            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(PreprocessStageExecutor))]
@@ -56,7 +60,7 @@ public sealed class PreprocessStageExecutor
                 output: new { TextPreprocessed = true },
                 metadata: new Dictionary<string, object>
                 {
-                    ["CompletedAt"] = DateTime.UtcNow
+                    ["CompletedAt"] = _timeProvider.GetUtcNow()
                 });
         }
         catch (Exception ex)
