@@ -10,16 +10,15 @@ A serverless document processing pipeline built with .NET 8.0 Azure Functions an
 
 This project implements a microservices architecture for document AI processing with the following components:
 
-- **API Service** (`src/DocProcessing.Api/`) - Azure Functions v4 API with Azure Blob Storage, Service Bus, and Entity Framework Core integration
-- **Worker Orchestrator** (`src/worker/orchestrator/DocProcessing.Orchestrator/`) - Azure Durable Functions for document processing orchestration
-- **Client Application** (`src/client/receiver-app/`) - Angular 20.3 frontend with Material Design
-- **Common Libraries** (`src/common/`)
+- **API Service** (`docproc/src/api/`) - Azure Functions v4 API with Azure Blob Storage, Service Bus, and Entity Framework Core integration
+- **Worker Orchestrator** (`docproc/src/worker/orchestrator/DocProcessing.Orchestrator/`) - Azure Durable Functions for document processing orchestration
+- **Client Application** (`docproc/src/client/receiver-app/`) - Angular 20.3 frontend with Material Design
+- **Common Libraries** (`docproc/src/common/`)
   - **DocProcessing.Domain** - Entity Framework Core domain models (Document, ProcessJob, ProfileCatalog)
-  - **DocProcessing.Contracts** - Shared contracts and DTOs for inter-service communication
-  - **DocProcessing.Application** - Application services (DocumentService, ProcessJobService), pipeline stage contracts, and business logic
+  - **DocProcessing.Application** - Application services (DocumentService, ProcessJobService), pipeline stage contracts, message contracts (ProcessDocumentMessage), and business logic
   - **DocProcessing.Infrastructure** - Infrastructure implementations for storage (BlobStorageService), messaging (ServiceBusService), and database (ApplicationDbContext)
 - **Tools**
-  - **ServiceBusQueueInspector** - CLI tool for inspecting and monitoring Azure Service Bus queues
+  - **ServiceBusQueueInspector** (`docproc/ServiceBusQueueInspector/`) - CLI tool for inspecting and monitoring Azure Service Bus queues
 
 ### Key Features
 
@@ -98,10 +97,15 @@ This starts:
 
 #### Configure the Emulator Connection Strings
 
-The `appsettings.Development.json` file is already configured with local emulator connection strings:
+For local development, create or update `docproc/src/api/local.settings.json` with local emulator connection strings:
 
 ```json
 {
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+  },
   "AzureStorage": {
     "ConnectionString": "UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://127.0.0.1",
     "ContainerName": "uploads"
@@ -113,7 +117,7 @@ The `appsettings.Development.json` file is already configured with local emulato
 }
 ```
 
-**Note:** The Service Bus emulator connection string format is specifically for native local development. When the emulator container and your application are running natively on the local machine, use this exact connection string format.
+**Note:** The Service Bus emulator connection string format is specifically for native local development. When the emulator container and your application are running natively on the local machine, use this exact connection string format. The `local.settings.json` file is not committed to source control.
 
 #### Service Bus Queue Configuration
 
@@ -134,7 +138,7 @@ docker-compose down
 
 ### 3. Configure Azure Services (Production/Cloud)
 
-For non-local environments, create or update `src/api/appsettings.json`:
+For non-local environments, create or update `docproc/src/api/appsettings.json`:
 
 ```json
 {
@@ -160,11 +164,11 @@ cd docproc
 dotnet build docproc.sln
 
 # Run the API with Azure Functions runtime
-cd src/DocProcessing.Api
+cd src/api
 func start
 
 # Or run with hot reload using dotnet watch (from docproc directory)
-dotnet watch --project src/DocProcessing.Api/DocProcessing.Api.csproj
+dotnet watch --project src/api/DocProcessing.Api.csproj
 ```
 
 The API will be available at:
@@ -191,63 +195,71 @@ The client will be available at `http://localhost:4200`
 ## Project Structure
 
 ```
-docproc/
-├── src/
-│   ├── DocProcessing.Api/           # Azure Functions v4 API
-│   │   ├── Functions/               # Azure Functions (UploadFunctions with Upload and RetryJob endpoints)
-│   │   ├── Program.cs               # Application entry point with DI configuration
-│   │   ├── host.json                # Azure Functions host configuration
-│   │   └── Dockerfile               # Docker configuration
-│   ├── DocProcessing.Api.Tests/     # Unit tests for API
-│   │   └── Services/                # Service layer tests
-│   ├── Infrastructure.Tests/        # Unit tests for Infrastructure layer
-│   │   └── Services/                # Service layer tests (e.g., ProcessJobServiceTests)
-│   ├── common/                      # Shared libraries (Clean Architecture layers)
-│   │   ├── DocProcessing.Domain/    # Domain entities (Document, ProcessJob, ProfileCatalog)
-│   │   ├── DocProcessing.Contracts/ # Shared contracts (ProcessDocumentMessage)
-│   │   ├── DocProcessing.Application/ # Application services and business logic
-│   │   │   ├── Services/            # DocumentService, ProcessJobService
-│   │   │   ├── Pipeline/            # Pipeline stage contracts (IJobStageActivity)
-│   │   │   ├── Interfaces/          # Service interfaces
-│   │   │   └── Validation/          # Validation logic
-│   │   └── DocProcessing.Infrastructure/ # Infrastructure implementations
-│   │       ├── Storage/             # BlobStorageService with Managed Identity
-│   │       ├── MessageBroker/       # ServiceBusService with Managed Identity
-│   │       ├── FileUpload/          # File upload configuration and options
-│   │       ├── ApplicationDbContext.cs # EF Core DbContext
-│   │       └── Migrations/          # EF Core migrations
-│   ├── worker/
-│   │   └── orchestrator/
-│   │       └── DocProcessing.Orchestrator/ # Azure Durable Functions orchestrator
-│   │           └── Functions/       # Durable Functions for workflow orchestration
-│   └── client/
-│       └── receiver-app/            # Angular 20.3 application
-├── tests/                           # Test projects and shared utilities
-│   ├── DocProcessing.TestUtilities/ # Shared test utilities (FakeLogger extensions, etc.)
-│   ├── DocProcessing.Application.Tests/ # Unit tests for Application layer
-│   └── README.md                    # Testing guide
-├── ServiceBusQueueInspector/        # CLI tool for Service Bus queue inspection
-├── ServiceBusQueueInspector.Tests/  # Tests for the inspector tool
-├── docs/                            # Documentation
-├── infra/                           # Infrastructure as Code
-├── knowledge-base/                  # Project knowledge base (v1.1.0)
-│   ├── core.md                     # KB index and versioning
-│   ├── README.md                   # KB overview
-│   ├── CONTRIBUTING.md             # KB contribution guide
-│   ├── code-style/                 # Style guides by framework
-│   │   ├── dotnet/                 # C#/.NET guides
-│   │   ├── angular/                # Angular guides
-│   │   └── typescript/             # TypeScript guides
-│   ├── recipes/                    # Reusable patterns
-│   ├── tools/                      # KB transformation tools
-│   └── tests/                      # KB validation
+doc-ai-azure-pipeline/               # Repository root
+├── docproc/                         # Main solution directory
+│   ├── src/
+│   │   ├── api/                     # Azure Functions v4 API (DocProcessing.Api.csproj)
+│   │   │   ├── Functions/           # Azure Functions (UploadFunction with Upload and RetryJob endpoints)
+│   │   │   ├── Options/             # Configuration options
+│   │   │   ├── Program.cs           # Application entry point with DI configuration
+│   │   │   ├── host.json            # Azure Functions host configuration
+│   │   │   ├── appsettings.json     # Application configuration
+│   │   │   └── Dockerfile           # Docker configuration
+│   │   ├── common/                  # Shared libraries (Clean Architecture layers)
+│   │   │   ├── DocProcessing.Domain/    # Domain entities (Document, ProcessJob, ProfileCatalog)
+│   │   │   ├── DocProcessing.Application/ # Application services and business logic
+│   │   │   │   ├── Contracts/       # Message contracts (ProcessDocumentMessage)
+│   │   │   │   ├── Interfaces/      # Service interfaces
+│   │   │   │   ├── Models/          # DTOs and view models (ProcessJobModel, OcrResult, etc.)
+│   │   │   │   ├── Options/         # Configuration options (OcrOptions)
+│   │   │   │   ├── Pipeline/        # Pipeline stage implementations and contracts
+│   │   │   │   └── DependencyInjection.cs
+│   │   │   └── DocProcessing.Infrastructure/ # Infrastructure implementations
+│   │   │       ├── Data/            # ApplicationDbContext and migrations
+│   │   │       ├── Storage/         # BlobStorageService with Managed Identity
+│   │   │       ├── MessageBroker/   # ServiceBusService with Managed Identity
+│   │   │       ├── Services/        # DocumentService, ProcessJobService
+│   │   │       └── DependencyInjection.cs
+│   │   ├── worker/
+│   │   │   └── orchestrator/
+│   │   │       └── DocProcessing.Orchestrator/ # Azure Durable Functions orchestrator
+│   │   │           ├── Executors/   # Stage executors
+│   │   │           ├── Functions/   # Durable Functions for workflow orchestration
+│   │   │           └── Program.cs   # Worker entry point
+│   │   └── client/
+│   │       └── receiver-app/        # Angular 20.3 application
+│   ├── tests/                       # Test projects and shared utilities
+│   │   ├── DocProcessing.TestUtilities/ # Shared test utilities (FakeLogger extensions, etc.)
+│   │   ├── DocProcessing.Api.Tests/ # Unit tests for API
+│   │   ├── DocProcessing.Application.Tests/ # Unit tests for Application layer
+│   │   └── Infrastructure.Tests/    # Unit tests for Infrastructure layer
+│   ├── ServiceBusQueueInspector/    # CLI tool for Service Bus queue inspection
+│   ├── ServiceBusQueueInspector.Tests/ # Tests for the inspector tool
+│   ├── docs/                        # Documentation
+│   ├── infra/                       # Infrastructure as Code
+│   ├── knowledge-base/              # Project knowledge base (v1.1.0)
+│   │   ├── core.md                  # KB index and versioning
+│   │   ├── README.md                # KB overview
+│   │   ├── CONTRIBUTING.md          # KB contribution guide
+│   │   ├── code-style/              # Style guides by framework
+│   │   │   ├── dotnet/              # C#/.NET guides
+│   │   │   ├── angular/             # Angular guides
+│   │   │   └── typescript/          # TypeScript guides
+│   │   ├── recipes/                 # Reusable patterns
+│   │   ├── tools/                   # KB transformation tools
+│   │   └── tests/                   # KB validation
+│   ├── docproc.sln                  # Solution file
+│   └── global.json                  # .NET SDK version
 ├── .github/
 │   └── workflows/                   # CI/CD pipelines
-│       ├── deploy-api-functions.yml              # Deploy API to Azure Functions
+│       ├── deploy-api-functions.yml # Deploy API to Azure Functions
 │       ├── deploy-worker-orchestrator-functions.yml # Deploy orchestrator worker
-│       └── azure-static-web-apps-receiver.yml    # Deploy Angular client
-├── docproc.sln                     # Solution file
-└── global.json                     # .NET SDK version
+│       └── azure-static-web-apps-receiver.yml # Deploy Angular client
+├── config.json                      # Service Bus emulator configuration
+├── docker-compose.yml               # Local development emulators (Azurite, Service Bus)
+├── CLAUDE.md                        # Claude Code AI agent instructions
+├── README.md                        # This file
+└── ServiceBusQueueInspector-BlogPost.md # Blog post about the inspector tool
 ```
 
 ## Development
@@ -262,7 +274,7 @@ cd docproc
 dotnet build docproc.sln -c Release
 
 # Run API without watch
-dotnet run --project src/DocProcessing.Api/DocProcessing.Api.csproj
+dotnet run --project src/api/DocProcessing.Api.csproj
 
 # Run Worker Orchestrator
 cd src/worker/orchestrator/DocProcessing.Orchestrator
@@ -272,7 +284,7 @@ func start
 dotnet test
 
 # Run specific test project
-dotnet test src/DocProcessing.Api.Tests/DocProcessing.Api.Tests.csproj
+dotnet test tests/DocProcessing.Api.Tests/DocProcessing.Api.Tests.csproj
 
 # Run ServiceBusQueueInspector tool
 dotnet run --project ServiceBusQueueInspector/ServiceBusQueueInspector.csproj
@@ -307,7 +319,7 @@ npm run format
 ```bash
 # Build API Docker image (from docproc directory)
 cd docproc
-docker build -f src/DocProcessing.Api/Dockerfile -t docproc-api .
+docker build -f src/api/Dockerfile -t docproc-api .
 
 # Run API container
 docker run -p 7071:7071 docproc-api
@@ -445,13 +457,13 @@ The API uses Azure Functions configuration with Managed Identity support. Key se
 - **Database** - EF Core migration settings
 - **ApplicationInsights** - Telemetry and logging
 
-**Note:** For local development, use `local.settings.json` (not committed to source control) or `appsettings.Development.json` with connection strings for emulators.
+**Note:** For local development, use `local.settings.json` (not committed to source control) with connection strings for emulators.
 
 ### Entity Framework Migrations
 
 ```bash
 # Add new migration
-cd docproc/src/DocProcessing.Api
+cd docproc/src/api
 dotnet ef migrations add MigrationName
 
 # Update database
@@ -549,7 +561,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 
 2. **deploy-worker-orchestrator-functions.yml** - Deploys the orchestrator worker
    - Triggers on pushes to `main` branch affecting orchestrator code
-   - Builds and publishes the Worker.Orchestrator project
+   - Builds and publishes the DocProcessing.Orchestrator project
    - Deploys to Azure Functions app
 
 3. **azure-static-web-apps-receiver.yml** - Deploys the Angular client
