@@ -30,7 +30,7 @@ public sealed partial class ProcessJobService : IProcessJobService
     /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
     /// Thrown when the database update operation fails.
     /// </exception>
-    public async Task<bool> RetryFailedJobAsync(
+    public async Task<(bool Success, string? CorrelationId)> RetryFailedJobAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
@@ -41,13 +41,13 @@ public sealed partial class ProcessJobService : IProcessJobService
         if (job == null)
         {
             LogJobNotFoundForRetry(jobId);
-            return false;
+            return (false, null);
         }
 
         if (job.Status != ProcessJobStatus.Failed)
         {
-            LogCannotRetryJobNotFailed(job.JobId, job.Status);
-            return false;
+            LogCannotRetryJobNotFailed(job.CorrelationId, job.JobId, job.Status);
+            return (false, null);
         }
 
         _dbContext.ProcessJobs.Attach(job);
@@ -58,9 +58,9 @@ public sealed partial class ProcessJobService : IProcessJobService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        LogJobTransitionedToPendingForRetry(job.JobId, job.Attempts);
+        LogJobTransitionedToPendingForRetry(job.CorrelationId, job.JobId, job.Attempts);
 
-        return true;
+        return (true, job.CorrelationId);
     }
 
     /// <inheritdoc />
@@ -113,7 +113,7 @@ public sealed partial class ProcessJobService : IProcessJobService
 
         if (existingJob != null)
         {
-            LogFoundExistingNonTerminalJob(existingJob.JobId, existingJob.Status, existingJob.Stage);
+            LogFoundExistingNonTerminalJob(existingJob.CorrelationId, existingJob.JobId, existingJob.Status, existingJob.Stage);
 
             return (existingJob.JobId, false);
         }
@@ -136,7 +136,7 @@ public sealed partial class ProcessJobService : IProcessJobService
         _dbContext.ProcessJobs.Add(newJob);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        LogCreatedNewProcessJob(newJob.JobId, newJob.DocumentId, newJob.IdempotencyKey);
+        LogCreatedNewProcessJob(newJob.CorrelationId, newJob.JobId, newJob.DocumentId, newJob.IdempotencyKey);
 
         return (newJob.JobId, true);
     }
@@ -158,7 +158,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             {
                 if (job.Status != ProcessJobStatus.Pending)
                 {
-                    LogCannotStartProcessingNotPending(jobId, job.Status);
+                    LogCannotStartProcessingNotPending(job.CorrelationId, jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Pending status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Processing;
@@ -170,7 +170,7 @@ public sealed partial class ProcessJobService : IProcessJobService
 
         if (success)
         {
-            LogJobTransitionedToProcessing(updatedJob!.JobId, updatedJob.Attempts);
+            LogJobTransitionedToProcessing(updatedJob!.CorrelationId, updatedJob.JobId, updatedJob.Attempts);
         }
 
         return success;
@@ -193,7 +193,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
-                    LogCannotCompleteNotProcessing(jobId, job.Status);
+                    LogCannotCompleteNotProcessing(job.CorrelationId, jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Completed;
@@ -201,10 +201,10 @@ public sealed partial class ProcessJobService : IProcessJobService
             },
             "Complete",
             cancellationToken);
-        
+
         if (success)
         {
-            LogJobCompletedSuccessfully(updatedJob!.JobId, updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
+            LogJobCompletedSuccessfully(updatedJob!.CorrelationId, updatedJob.JobId, updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
         }
 
         return success;
@@ -223,13 +223,13 @@ public sealed partial class ProcessJobService : IProcessJobService
         string? errorMessage = null,
         CancellationToken cancellationToken = default)
     {
-        (bool success, _) = await TryUpdateJobAsync(
+        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
             jobId,
             job =>
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
-                    LogCannotFailNotProcessing(jobId, job.Status);
+                    LogCannotFailNotProcessing(job.CorrelationId, jobId, job.Status);
                     throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
                 }
                 job.Status = ProcessJobStatus.Failed;
@@ -239,10 +239,10 @@ public sealed partial class ProcessJobService : IProcessJobService
             },
             "Fail",
             cancellationToken);
-        
+
         if (success)
         {
-            LogJobFailed(jobId, errorCode, errorMessage);
+            LogJobFailed(updatedJob!.CorrelationId, jobId, errorCode, errorMessage);
         }
 
         return success;
@@ -314,14 +314,14 @@ public sealed partial class ProcessJobService : IProcessJobService
     [LoggerMessage(
         EventId = 2,
         Level = LogLevel.Warning,
-        Message = "Cannot retry job: Job is not in Failed state. JobId={JobId}, Status={Status}")]
-    private partial void LogCannotRetryJobNotFailed(Guid jobId, ProcessJobStatus status);
+        Message = "Cannot retry job: Job is not in Failed state. CorrelationId: {CorrelationId}, JobId={JobId}, Status={Status}")]
+    private partial void LogCannotRetryJobNotFailed(string correlationId, Guid jobId, ProcessJobStatus status);
 
     [LoggerMessage(
         EventId = 3,
         Level = LogLevel.Information,
-        Message = "Job transitioned to Pending for retry. JobId={JobId}, TotalAttempts={Attempts}")]
-    private partial void LogJobTransitionedToPendingForRetry(Guid jobId, int attempts);
+        Message = "Job transitioned to Pending for retry. CorrelationId: {CorrelationId}, JobId={JobId}, TotalAttempts={Attempts}")]
+    private partial void LogJobTransitionedToPendingForRetry(string correlationId, Guid jobId, int attempts);
 
     [LoggerMessage(
         EventId = 4,
@@ -332,50 +332,50 @@ public sealed partial class ProcessJobService : IProcessJobService
     [LoggerMessage(
         EventId = 5,
         Level = LogLevel.Information,
-        Message = "Found existing non-terminal job: JobId={JobId}, Status={Status}, Stage={Stage}")]
-    private partial void LogFoundExistingNonTerminalJob(Guid jobId, ProcessJobStatus status, ProcessJobStage stage);
+        Message = "Found existing non-terminal job. CorrelationId: {CorrelationId}, JobId={JobId}, Status={Status}, Stage={Stage}")]
+    private partial void LogFoundExistingNonTerminalJob(string correlationId, Guid jobId, ProcessJobStatus status, ProcessJobStage stage);
 
     [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Information,
-        Message = "Created new process job: JobId={JobId}, DocumentId={DocumentId}, IdempotencyKey={IdempotencyKey}")]
-    private partial void LogCreatedNewProcessJob(Guid jobId, Guid documentId, string idempotencyKey);
+        Message = "Created new process job. CorrelationId: {CorrelationId}, JobId={JobId}, DocumentId={DocumentId}, IdempotencyKey={IdempotencyKey}")]
+    private partial void LogCreatedNewProcessJob(string correlationId, Guid jobId, Guid documentId, string idempotencyKey);
 
     [LoggerMessage(
         EventId = 7,
         Level = LogLevel.Warning,
-        Message = "Cannot start processing: Job is not in Pending status. JobId={JobId}, CurrentStatus={Status}")]
-    private partial void LogCannotStartProcessingNotPending(Guid jobId, ProcessJobStatus status);
+        Message = "Cannot start processing: Job is not in Pending status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotStartProcessingNotPending(string correlationId, Guid jobId, ProcessJobStatus status);
 
     [LoggerMessage(
         EventId = 8,
         Level = LogLevel.Information,
-        Message = "Job transitioned to Processing. JobId={JobId}, Attempts={Attempts}")]
-    private partial void LogJobTransitionedToProcessing(Guid jobId, int attempts);
+        Message = "Job transitioned to Processing. CorrelationId: {CorrelationId}, JobId={JobId}, Attempts={Attempts}")]
+    private partial void LogJobTransitionedToProcessing(string correlationId, Guid jobId, int attempts);
 
     [LoggerMessage(
         EventId = 9,
         Level = LogLevel.Warning,
-        Message = "Cannot complete: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}")]
-    private partial void LogCannotCompleteNotProcessing(Guid jobId, ProcessJobStatus status);
+        Message = "Cannot complete: Job is not in Processing status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotCompleteNotProcessing(string correlationId, Guid jobId, ProcessJobStatus status);
 
     [LoggerMessage(
         EventId = 10,
         Level = LogLevel.Information,
-        Message = "Job completed successfully. JobId={JobId}, Duration={Duration}")]
-    private partial void LogJobCompletedSuccessfully(Guid jobId, TimeSpan? duration);
+        Message = "Job completed successfully. CorrelationId: {CorrelationId}, JobId={JobId}, Duration={Duration}")]
+    private partial void LogJobCompletedSuccessfully(string correlationId, Guid jobId, TimeSpan? duration);
 
     [LoggerMessage(
         EventId = 11,
         Level = LogLevel.Warning,
-        Message = "Cannot fail: Job is not in Processing status. JobId={JobId}, CurrentStatus={Status}")]
-    private partial void LogCannotFailNotProcessing(Guid jobId, ProcessJobStatus status);
+        Message = "Cannot fail: Job is not in Processing status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotFailNotProcessing(string correlationId, Guid jobId, ProcessJobStatus status);
 
     [LoggerMessage(
         EventId = 12,
         Level = LogLevel.Error,
-        Message = "Job failed. JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}")]
-    private partial void LogJobFailed(Guid jobId, string? errorCode, string? errorMessage);
+        Message = "Job failed. CorrelationId: {CorrelationId}, JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}")]
+    private partial void LogJobFailed(string correlationId, Guid jobId, string? errorCode, string? errorMessage);
 
     [LoggerMessage(
         EventId = 13,

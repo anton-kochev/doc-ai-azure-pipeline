@@ -176,6 +176,9 @@ public sealed partial class UploadFunctions
                 fileData.Data.Position = 0; // Reset stream position for upload
             }
 
+            // Generate correlation ID upfront for distributed tracing
+            string correlationId = Guid.NewGuid().ToString();
+
             // Upload to Blob Storage using Managed Identity
             UploadResult result = await _storageService.UploadAsync(
                 fileData.FileName,
@@ -183,7 +186,7 @@ public sealed partial class UploadFunctions
                 fileData.ContentType,
                 cancellationToken);
 
-            LogFileUploadedSuccessfully(result.FileName, result.FileSizeBytes);
+            LogFileUploadedSuccessfully(correlationId, result.FileName, result.FileSizeBytes);
 
             // Get existing or create new Document record in the database
             (Guid documentId, bool isNewDocument) = await _documentService.GetOrCreateDocumentAsync(
@@ -200,11 +203,11 @@ public sealed partial class UploadFunctions
 
             if (isNewDocument)
             {
-                LogDocumentCreated(documentId);
+                LogDocumentCreated(correlationId, documentId);
             }
             else
             {
-                LogDocumentAlreadyExists(documentId);
+                LogDocumentAlreadyExists(correlationId, documentId);
             }
 
             // Get existing or create a new ProcessJob with idempotency check
@@ -213,24 +216,25 @@ public sealed partial class UploadFunctions
                 tenantId: fileData.TenantId,
                 sha256Hash: sha256Hash,
                 extractionProfile: fileData.ExtractionProfile,
+                correlationId: correlationId,
                 cancellationToken: cancellationToken);
 
             if (isNewJob)
             {
-                LogJobCreated(jobId);
+                LogJobCreated(correlationId, jobId);
 
                 // Enqueue Service Bus message for new jobs only
                 await _messagingService.EnqueueJobAsync(
                     jobId: jobId,
-                    correlationId: jobId.ToString(), // TODO: Check if this is okay
+                    correlationId: correlationId,
                     cancellationToken
                 );
 
-                LogJobMessageEnqueued(jobId);
+                LogJobMessageEnqueued(correlationId, jobId);
             }
             else
             {
-                LogJobAlreadyExists(jobId);
+                LogJobAlreadyExists(correlationId, jobId);
             }
 
             // Return 202 Accepted with job and document IDs
@@ -311,14 +315,14 @@ public sealed partial class UploadFunctions
             return badResponse;
         }
 
-        bool success = await _processJobService.RetryFailedJobAsync(parsedJobId, cancellationToken);
+        (bool success, string? correlationId) = await _processJobService.RetryFailedJobAsync(parsedJobId, cancellationToken);
 
         if (success)
         {
-            // Re-enqueue to Service Bus
+            // Re-enqueue to Service Bus with the original correlation ID
             await _messagingService.EnqueueJobAsync(
                 jobId: parsedJobId,
-                correlationId: parsedJobId.ToString(),
+                correlationId: correlationId!,
                 cancellationToken);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
@@ -367,38 +371,38 @@ public sealed partial class UploadFunctions
     [LoggerMessage(
         EventId = 5,
         Level = LogLevel.Information,
-        Message = "File uploaded successfully: {FileName}, Size: {Size} bytes")]
-    private partial void LogFileUploadedSuccessfully(string fileName, long size);
+        Message = "File uploaded successfully. CorrelationId: {CorrelationId}, FileName: {FileName}, Size: {Size} bytes")]
+    private partial void LogFileUploadedSuccessfully(string correlationId, string fileName, long size);
 
     [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Information,
-        Message = "Document record created: {DocumentId}")]
-    private partial void LogDocumentCreated(Guid documentId);
+        Message = "Document record created. CorrelationId: {CorrelationId}, DocumentId: {DocumentId}")]
+    private partial void LogDocumentCreated(string correlationId, Guid documentId);
 
     [LoggerMessage(
         EventId = 7,
         Level = LogLevel.Information,
-        Message = "Document already exists, returning existing record: {DocumentId}")]
-    private partial void LogDocumentAlreadyExists(Guid documentId);
+        Message = "Document already exists, returning existing record. CorrelationId: {CorrelationId}, DocumentId: {DocumentId}")]
+    private partial void LogDocumentAlreadyExists(string correlationId, Guid documentId);
 
     [LoggerMessage(
         EventId = 8,
         Level = LogLevel.Information,
-        Message = "Process job created: {JobId}")]
-    private partial void LogJobCreated(Guid jobId);
+        Message = "Process job created. CorrelationId: {CorrelationId}, JobId: {JobId}")]
+    private partial void LogJobCreated(string correlationId, Guid jobId);
 
     [LoggerMessage(
         EventId = 9,
         Level = LogLevel.Information,
-        Message = "Job message enqueued: {JobId}")]
-    private partial void LogJobMessageEnqueued(Guid jobId);
+        Message = "Job message enqueued. CorrelationId: {CorrelationId}, JobId: {JobId}")]
+    private partial void LogJobMessageEnqueued(string correlationId, Guid jobId);
 
     [LoggerMessage(
         EventId = 10,
         Level = LogLevel.Information,
-        Message = "Process job already exists, returning existing job: {JobId}")]
-    private partial void LogJobAlreadyExists(Guid jobId);
+        Message = "Process job already exists, returning existing job. CorrelationId: {CorrelationId}, JobId: {JobId}")]
+    private partial void LogJobAlreadyExists(string correlationId, Guid jobId);
 
     [LoggerMessage(
         EventId = 11,

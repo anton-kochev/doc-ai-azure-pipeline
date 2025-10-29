@@ -30,8 +30,8 @@ public interface IProcessJobService
     /// </summary>
     /// <param name="jobId">The ID of the job to retry.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the job was successfully retried, false if the job doesn't exist or is not in Failed status.</returns>
-    Task<bool> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+    /// <returns>A tuple containing a success flag and the correlation ID if successful, or (false, null) if the job doesn't exist or is not in Failed status.</returns>
+    Task<(bool Success, string? CorrelationId)> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Computes the idempotency key for a job based on tenant, document hash, and extraction profile.

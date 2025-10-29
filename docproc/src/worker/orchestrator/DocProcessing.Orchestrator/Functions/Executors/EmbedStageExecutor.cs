@@ -36,9 +36,9 @@ public sealed class EmbedStageExecutor
         ArgumentNullException.ThrowIfNull(context);
 
         _logger.LogInformation(
-            "Starting Embed stage for JobId: {JobId}, CorrelationId: {CorrelationId}",
-            context.Job.JobId,
-            context.CorrelationId);
+            "Starting Embed stage. CorrelationId: {CorrelationId}, JobId: {JobId}",
+            context.CorrelationId,
+            context.Job.JobId);
 
         try
         {
@@ -50,9 +50,10 @@ public sealed class EmbedStageExecutor
             await _pipelineActivityFactory
                 .Create(ProcessJobStage.Embed)
                 .ExecuteAsync(context, cancellationToken);
-            
+
             _logger.LogInformation(
-                "Embed stage completed successfully for JobId: {JobId}",
+                "Embed stage completed successfully. CorrelationId: {CorrelationId}, JobId: {JobId}",
+                context.CorrelationId,
                 context.Job.JobId);
 
             return StageResult.Success(
@@ -66,7 +67,8 @@ public sealed class EmbedStageExecutor
         {
             _logger.LogError(
                 ex,
-                "Embed stage failed for JobId: {JobId}",
+                "Embed stage failed. CorrelationId: {CorrelationId}, JobId: {JobId}",
+                context.CorrelationId,
                 context.Job.JobId);
 
             return StageResult.Failure(

@@ -68,11 +68,11 @@ public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposa
 
             await _sender.SendMessageAsync(message, cancellationToken);
 
-            LogJobMessageEnqueued(jobId, correlationId);
+            LogJobMessageEnqueued(correlationId, jobId);
         }
         catch (Exception ex)
         {
-            LogFailedToEnqueueJobMessage(ex, jobId, correlationId);
+            LogFailedToEnqueueJobMessage(ex, correlationId, jobId);
             throw;
         }
     }
@@ -86,12 +86,12 @@ public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposa
     [LoggerMessage(
         EventId = 5,
         Level = LogLevel.Information,
-        Message = "Successfully enqueued job message: JobId={JobId}, CorrelationId={CorrelationId}")]
-    private partial void LogJobMessageEnqueued(Guid jobId, string correlationId);
+        Message = "Successfully enqueued job message. CorrelationId: {CorrelationId}, JobId: {JobId}")]
+    private partial void LogJobMessageEnqueued(string correlationId, Guid jobId);
 
     [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Error,
-        Message = "Failed to enqueue job message: JobId={JobId}, CorrelationId={CorrelationId}")]
-    private partial void LogFailedToEnqueueJobMessage(Exception exception, Guid jobId, string correlationId);
+        Message = "Failed to enqueue job message. CorrelationId: {CorrelationId}, JobId: {JobId}")]
+    private partial void LogFailedToEnqueueJobMessage(Exception exception, string correlationId, Guid jobId);
 }

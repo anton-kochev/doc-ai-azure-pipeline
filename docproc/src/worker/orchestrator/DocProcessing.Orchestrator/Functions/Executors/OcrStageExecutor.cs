@@ -36,9 +36,9 @@ public sealed class OcrStageExecutor
         ArgumentNullException.ThrowIfNull(context);
 
         _logger.LogInformation(
-            "Starting OCR stage for JobId: {JobId}, CorrelationId: {CorrelationId}",
-            context.Job.JobId,
-            context.CorrelationId);
+            "Starting OCR stage. CorrelationId: {CorrelationId}, JobId: {JobId}",
+            context.CorrelationId,
+            context.Job.JobId);
 
         try
         {
@@ -53,7 +53,8 @@ public sealed class OcrStageExecutor
                 .ExecuteAsync(context, cancellationToken);
 
             _logger.LogInformation(
-                "OCR stage completed successfully for JobId: {JobId}",
+                "OCR stage completed successfully. CorrelationId: {CorrelationId}, JobId: {JobId}",
+                context.CorrelationId,
                 context.Job.JobId);
 
             return StageResult.Success(
@@ -67,7 +68,8 @@ public sealed class OcrStageExecutor
         {
             _logger.LogError(
                 ex,
-                "OCR stage failed for JobId: {JobId}",
+                "OCR stage failed. CorrelationId: {CorrelationId}, JobId: {JobId}",
+                context.CorrelationId,
                 context.Job.JobId);
 
             return StageResult.Failure(

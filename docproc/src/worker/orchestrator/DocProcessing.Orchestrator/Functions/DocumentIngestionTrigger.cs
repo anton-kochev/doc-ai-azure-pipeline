@@ -39,7 +39,7 @@ public partial class DocumentIngestionTrigger
             ["MessageId"] = message.MessageId
         }))
         {
-            LogReceivedDocumentProcessingMessage(message.MessageId, correlationId);
+            LogReceivedDocumentProcessingMessage(correlationId, message.MessageId);
 
             ProcessDocumentMessage? payload = null;
 
@@ -64,14 +64,14 @@ public partial class DocumentIngestionTrigger
                     return;
                 }
 
-                LogMessageValidatedSuccessfully(payload!.JobId, payload.DocumentId, payload.TenantId);
+                LogMessageValidatedSuccessfully(correlationId, payload!.JobId, payload.DocumentId, payload.TenantId);
 
                 // Start durable orchestration
                 string orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
                     nameof(DocumentProcessingOrchestrator),
                     payload);
 
-                LogStartedOrchestrationInstance(orchestrationInstanceId, payload.JobId, payload.IdempotencyKey);
+                LogStartedOrchestrationInstance(correlationId, orchestrationInstanceId, payload.JobId, payload.IdempotencyKey);
 
                 // Complete the message
                 await messageActions.CompleteMessageAsync(message);
@@ -87,7 +87,7 @@ public partial class DocumentIngestionTrigger
             }
             catch (Exception ex)
             {
-                LogUnexpectedErrorProcessingMessage(ex, payload?.JobId ?? "unknown");
+                LogUnexpectedErrorProcessingMessage(ex, correlationId, payload?.JobId ?? "unknown");
 
                 // Abandon message to retry
                 await messageActions.AbandonMessageAsync(message);
@@ -99,8 +99,8 @@ public partial class DocumentIngestionTrigger
     [LoggerMessage(
         EventId = 1,
         Level = LogLevel.Information,
-        Message = "Received document processing message. MessageId: {MessageId}, CorrelationId: {CorrelationId}")]
-    private partial void LogReceivedDocumentProcessingMessage(string messageId, string correlationId);
+        Message = "Received document processing message. CorrelationId: {CorrelationId}, MessageId: {MessageId}")]
+    private partial void LogReceivedDocumentProcessingMessage(string correlationId, string messageId);
 
     [LoggerMessage(
         EventId = 2,
@@ -111,14 +111,14 @@ public partial class DocumentIngestionTrigger
     [LoggerMessage(
         EventId = 3,
         Level = LogLevel.Information,
-        Message = "Message validated successfully. JobId: {JobId}, DocumentId: {DocumentId}, TenantId: {TenantId}")]
-    private partial void LogMessageValidatedSuccessfully(string jobId, string? documentId, string? tenantId);
+        Message = "Message validated successfully. CorrelationId: {CorrelationId}, JobId: {JobId}, DocumentId: {DocumentId}, TenantId: {TenantId}")]
+    private partial void LogMessageValidatedSuccessfully(string correlationId, string jobId, string? documentId, string? tenantId);
 
     [LoggerMessage(
         EventId = 4,
         Level = LogLevel.Information,
-        Message = "Started orchestration instance: {InstanceId} for JobId: {JobId}. IdempotencyKey: {IdempotencyKey}")]
-    private partial void LogStartedOrchestrationInstance(string instanceId, string jobId, string? idempotencyKey);
+        Message = "Started orchestration instance. CorrelationId: {CorrelationId}, InstanceId: {InstanceId}, JobId: {JobId}, IdempotencyKey: {IdempotencyKey}")]
+    private partial void LogStartedOrchestrationInstance(string correlationId, string instanceId, string jobId, string? idempotencyKey);
 
     [LoggerMessage(
         EventId = 5,
@@ -129,6 +129,6 @@ public partial class DocumentIngestionTrigger
     [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Error,
-        Message = "Unexpected error processing message for JobId: {JobId}. Message will be abandoned.")]
-    private partial void LogUnexpectedErrorProcessingMessage(Exception exception, string jobId);
+        Message = "Unexpected error processing message. CorrelationId: {CorrelationId}, JobId: {JobId}. Message will be abandoned.")]
+    private partial void LogUnexpectedErrorProcessingMessage(Exception exception, string correlationId, string jobId);
 }
