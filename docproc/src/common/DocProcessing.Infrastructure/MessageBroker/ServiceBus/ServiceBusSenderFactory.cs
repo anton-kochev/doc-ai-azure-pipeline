@@ -1,34 +1,26 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System.Text.Json;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
-using DocProcessing.Application.Interfaces;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
-namespace DocProcessing.Infrastructure.MessageBroker;
+namespace DocProcessing.Infrastructure.MessageBroker.ServiceBus;
 
 /// <summary>
-/// Implementation of Service Bus message sending operations.
+/// Factory implementation for creating Service Bus senders.
+/// Handles both connection string and Managed Identity authentication.
 /// </summary>
-public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposable
+public sealed partial class ServiceBusSenderFactory : IServiceBusSenderFactory, IAsyncDisposable
 {
-    private readonly ILogger<ServiceBusService> _logger;
+    private readonly ILogger<ServiceBusSenderFactory> _logger;
     private readonly ServiceBusOptions _options;
     private readonly ServiceBusClient _client;
-    private readonly ServiceBusSender _sender;
 
-    public ServiceBusService(
-        ILogger<ServiceBusService> logger,
+    public ServiceBusSenderFactory(
+        ILogger<ServiceBusSenderFactory> logger,
         IOptions<ServiceBusOptions> options)
     {
         _logger = logger;
         _options = options.Value;
-
-        // Validate configuration
-        if (string.IsNullOrWhiteSpace(_options.QueueName))
-        {
-            throw new InvalidOperationException("ServiceBus:QueueName is not configured");
-        }
 
         // Configure retry options for resilience against transient failures
         ServiceBusClientOptions clientOptions = new()
@@ -60,57 +52,17 @@ public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposa
         {
             throw new InvalidOperationException("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured");
         }
-
-        _sender = _client.CreateSender(_options.QueueName);
-        LogServiceBusSenderCreated(_options.QueueName);
     }
 
-    /// <inheritdoc />
-    /// <exception cref="Azure.Messaging.ServiceBus.ServiceBusException">
-    /// Thrown when the Service Bus operation fails.
-    /// </exception>
-    public async Task EnqueueJobAsync(Guid jobId, Guid documentId, string correlationId, CancellationToken cancellationToken = default)
+    public IServiceBusSender CreateSender(string queueName)
     {
-        try
-        {
-            // Create message payload
-            var messagePayload = new
-            {
-                jobId,
-                documentId,
-                correlationId,
-                enqueuedAtUtc = DateTime.UtcNow
-            };
-
-            string messageBody = JsonSerializer.Serialize(messagePayload);
-
-            // Create a Service Bus message
-            ServiceBusMessage message = new(messageBody)
-            {
-                MessageId = jobId.ToString(),
-                CorrelationId = correlationId,
-                ContentType = "application/json"
-            };
-
-            // Add custom properties for filtering/routing
-            message.ApplicationProperties.Add("JobId", jobId.ToString());
-            message.ApplicationProperties.Add("DocumentId", documentId.ToString());
-
-            // Send the message
-            await _sender.SendMessageAsync(message, cancellationToken);
-
-            LogJobMessageEnqueued(jobId, documentId, correlationId);
-        }
-        catch (Exception ex)
-        {
-            LogFailedToEnqueueJobMessage(ex, jobId, documentId);
-            throw;
-        }
+        Azure.Messaging.ServiceBus.ServiceBusSender sender = _client.CreateSender(queueName);
+        LogServiceBusSenderCreated(queueName);
+        return new ServiceBusSender(sender);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _sender.DisposeAsync();
         await _client.DisposeAsync();
     }
 
@@ -138,16 +90,4 @@ public sealed partial class ServiceBusService : IMessagingService, IAsyncDisposa
         Level = LogLevel.Information,
         Message = "Service Bus sender created for queue: {QueueName}")]
     private partial void LogServiceBusSenderCreated(string queueName);
-
-    [LoggerMessage(
-        EventId = 5,
-        Level = LogLevel.Information,
-        Message = "Successfully enqueued job message: JobId={JobId}, DocumentId={DocumentId}, CorrelationId={CorrelationId}")]
-    private partial void LogJobMessageEnqueued(Guid jobId, Guid documentId, string correlationId);
-
-    [LoggerMessage(
-        EventId = 6,
-        Level = LogLevel.Error,
-        Message = "Failed to enqueue job message: JobId={JobId}, DocumentId={DocumentId}")]
-    private partial void LogFailedToEnqueueJobMessage(Exception exception, Guid jobId, Guid documentId);
 }

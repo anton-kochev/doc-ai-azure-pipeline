@@ -1,6 +1,5 @@
 using DocProcessing.Infrastructure.MessageBroker;
-using DocProcessing.TestUtilities.Logging;
-using Microsoft.Extensions.Logging;
+using DocProcessing.Infrastructure.MessageBroker.ServiceBus;
 using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 
@@ -13,13 +12,23 @@ public class ServiceBusServiceTests
         return new FakeLogger<ServiceBusService>();
     }
 
+    private Mock<IServiceBusSenderFactory> CreateMockFactory()
+    {
+        Mock<IServiceBusSender> mockSender = new();
+        Mock<IServiceBusSenderFactory> mockFactory = new();
+        mockFactory.Setup(f => f.CreateSender(It.IsAny<string>()))
+            .Returns(mockSender.Object);
+        return mockFactory;
+    }
+
     #region Constructor Tests
 
     [Fact]
     public void Constructor_WithNullQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
-        var logger = CreateLogger();
+        FakeLogger<ServiceBusService> logger = CreateLogger();
+        Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = null!,
@@ -28,7 +37,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
+            new ServiceBusService(logger, options, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -37,7 +46,8 @@ public class ServiceBusServiceTests
     public void Constructor_WithEmptyQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
-        var logger = CreateLogger();
+        FakeLogger<ServiceBusService> logger = CreateLogger();
+        Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "",
@@ -46,7 +56,7 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
+            new ServiceBusService(logger, options, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
     }
@@ -55,7 +65,8 @@ public class ServiceBusServiceTests
     public void Constructor_WithWhitespaceQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
-        var logger = CreateLogger();
+        FakeLogger<ServiceBusService> logger = CreateLogger();
+        Mock<IServiceBusSenderFactory> factory = CreateMockFactory();
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "   ",
@@ -64,216 +75,45 @@ public class ServiceBusServiceTests
 
         // Act & Assert
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
+            new ServiceBusService(logger, options, factory.Object));
 
         Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
-    }
-
-    [Fact]
-    public void Constructor_WithNoConnectionStringOrNamespace_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            ConnectionString = null,
-            Namespace = ""
-        });
-
-        // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
-
-        Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
-    }
-
-    [Fact]
-    public void Constructor_WithEmptyConnectionStringAndEmptyNamespace_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            ConnectionString = "",
-            Namespace = ""
-        });
-
-        // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
-
-        Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
-    }
-
-    [Fact]
-    public void Constructor_WithWhitespaceConnectionStringAndWhitespaceNamespace_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            ConnectionString = "   ",
-            Namespace = "   "
-        });
-
-        // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options));
-
-        Assert.Equal("Either ServiceBus:ConnectionString or ServiceBus:Namespace must be configured", exception.Message);
-    }
-
-    [Fact]
-    public async Task Constructor_LogsConnectionStringInitialization_WhenConnectionStringProvided()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test123=="
-        });
-
-        // Act
-        await using ServiceBusService service = new(logger, options);
-
-        // Assert
-        logger.VerifyWasCalled(LogLevel.Information, "Initializing Service Bus client with connection string");
-    }
-
-    [Fact]
-    public async Task Constructor_LogsSenderCreation_WhenConnectionStringProvided()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test123=="
-        });
-
-        // Act
-        await using ServiceBusService service = new(logger, options);
-
-        // Assert
-        logger.VerifyWasCalled(LogLevel.Information, "Service Bus sender created for queue");
-    }
-
-    [Fact]
-    public async Task Constructor_LogsManagedIdentityInitialization_WhenNamespaceProvidedAndNoConnectionString()
-    {
-        // Arrange
-        var logger = CreateLogger();
-        IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
-        {
-            QueueName = "test-queue",
-            Namespace = "test.servicebus.windows.net"
-        });
-
-        // Act & Assert - This will fail because DefaultAzureCredential won't work in test environment
-        // but we can verify the logging happens before the client creation fails
-        try
-        {
-            await using ServiceBusService service = new(logger, options);
-        }
-        catch
-        {
-            // Expected to fail in test environment
-        }
-
-        // Assert - verify the logging happened
-        logger.VerifyWasCalled(LogLevel.Information, "Initializing Service Bus client with Managed Identity");
     }
 
     #endregion
 
     #region EnqueueJobAsync Tests
 
-    // NOTE: The following tests demonstrate what should be tested for EnqueueJobAsync.
-    // However, due to the current implementation where ServiceBusClient and ServiceBusSender
-    // are created in the constructor (sealed classes that cannot be easily mocked),
-    // true unit testing of EnqueueJobAsync requires refactoring.
-    //
-    // Recommended refactoring approaches:
-    // 1. Inject ServiceBusClient as a dependency (with interface or factory pattern)
-    // 2. Create a testable wrapper/facade around Azure Service Bus operations
-    // 3. Use the Strategy pattern to make the sender implementation swappable
-    //
-    // For now, these test cases serve as documentation for what should be tested
-    // once the refactoring is complete.
-
-    /*
-    [Fact]
-    public async Task EnqueueJobAsync_WithValidParameters_SendsMessageSuccessfully()
-    {
-        // This test would verify:
-        // - Message is sent with correct MessageId (jobId as string)
-        // - Message has correct CorrelationId
-        // - Message has correct ContentType (application/json)
-        // - ApplicationProperties contain JobId and DocumentId
-        // - Message body is correctly serialized JSON
-        // - Success is logged
-    }
-
-    [Fact]
-    public async Task EnqueueJobAsync_WithValidParameters_CreatesCorrectMessagePayload()
-    {
-        // This test would verify:
-        // - jobId is included in the payload
-        // - documentId is included in the payload
-        // - correlationId is included in the payload
-        // - enqueuedAtUtc is set and close to DateTime.UtcNow
-    }
-
-    [Fact]
-    public async Task EnqueueJobAsync_WhenSendFails_LogsErrorAndRethrows()
-    {
-        // This test would verify:
-        // - Exception is logged with appropriate context (JobId, DocumentId)
-        // - Exception is re-thrown
-    }
-
-    [Fact]
-    public async Task EnqueueJobAsync_SetsMessageProperties_Correctly()
-    {
-        // This test would verify:
-        // - MessageId equals jobId.ToString()
-        // - CorrelationId equals the provided correlationId parameter
-        // - ContentType equals "application/json"
-    }
-
-    [Fact]
-    public async Task EnqueueJobAsync_SetsApplicationProperties_Correctly()
-    {
-        // This test would verify:
-        // - ApplicationProperties["JobId"] equals jobId.ToString()
-        // - ApplicationProperties["DocumentId"] equals documentId.ToString()
-    }
-    */
+    // These tests are now covered in Infrastructure.Tests/MessageBroker/ServiceBusServiceMessageTests.cs
+    // which properly mocks IServiceBusSender to test the complete message flow
 
     #endregion
 
     #region DisposeAsync Tests
 
     [Fact]
-    public async Task DisposeAsync_CanBeCalledMultipleTimes()
+    public async Task DisposeAsync_DisposesTheSender()
     {
         // Arrange
-        var logger = CreateLogger();
+        FakeLogger<ServiceBusService> logger = CreateLogger();
+        Mock<IServiceBusSender> mockSender = new();
+        Mock<IServiceBusSenderFactory> mockFactory = new();
+        mockFactory.Setup(f => f.CreateSender(It.IsAny<string>()))
+            .Returns(mockSender.Object);
+
         IOptions<ServiceBusOptions> options = Options.Create(new ServiceBusOptions
         {
             QueueName = "test-queue",
             ConnectionString = "Endpoint=sb://test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=test123=="
         });
 
-        ServiceBusService service = new(logger, options);
+        ServiceBusService service = new(logger, options, mockFactory.Object);
 
-        // Act & Assert - Should not throw
+        // Act
         await service.DisposeAsync();
-        await service.DisposeAsync(); // Second call should also succeed
+
+        // Assert
+        mockSender.Verify(s => s.DisposeAsync(), Times.Once);
     }
 
     #endregion

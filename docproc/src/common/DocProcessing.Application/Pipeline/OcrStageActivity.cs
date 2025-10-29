@@ -47,7 +47,7 @@ public sealed partial class OcrStageActivity : IJobStageActivity
         try
         {
             // 1. Get document from database
-            Domain.Entities.Document? document = await _documentService.GetDocumentByIdAsync(documentId, cancellationToken);
+            Document? document = await _documentService.GetDocumentByIdAsync(documentId, cancellationToken);
             if (document is null)
             {
                 LogDocumentNotFound(documentId);

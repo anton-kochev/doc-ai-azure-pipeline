@@ -55,7 +55,7 @@ public sealed partial class UploadFunctions
     /// </exception>
     [Function("UploadFile")]
     public async Task<HttpResponseData> UploadFile(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/upload")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "upload")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         LogProcessingUploadRequest();
@@ -212,8 +212,8 @@ public sealed partial class UploadFunctions
                 documentId: documentId,
                 tenantId: fileData.TenantId,
                 sha256Hash: sha256Hash,
-                extractionProfile: fileData.ExtractionProfile
-            );
+                extractionProfile: fileData.ExtractionProfile,
+                cancellationToken: cancellationToken);
 
             if (isNewJob)
             {
@@ -222,8 +222,7 @@ public sealed partial class UploadFunctions
                 // Enqueue Service Bus message for new jobs only
                 await _messagingService.EnqueueJobAsync(
                     jobId: jobId,
-                    documentId: documentId,
-                    correlationId: jobId.ToString(),
+                    correlationId: jobId.ToString(), // TODO: Check if this is okay
                     cancellationToken
                 );
 
@@ -236,18 +235,22 @@ public sealed partial class UploadFunctions
 
             // Return 202 Accepted with job and document IDs
             HttpResponseData response = req.CreateResponse(HttpStatusCode.Accepted);
-            await response.WriteAsJsonAsync(new
-            {
-                jobId,
-                documentId,
-                isNewJob,
-                isNewDocument,
-                extractionProfile = fileData.ExtractionProfile,
-                blobUrl = result.BlobUrl,
-                fileName = result.FileName,
-                contentType = result.ContentType,
-                fileSizeBytes = result.FileSizeBytes
-            });
+
+            await response.WriteAsJsonAsync(
+                new
+                {
+                    jobId,
+                    documentId,
+                    isNewJob,
+                    isNewDocument,
+                    extractionProfile = fileData.ExtractionProfile,
+                    blobUrl = result.BlobUrl,
+                    fileName = result.FileName,
+                    contentType = result.ContentType,
+                    fileSizeBytes = result.FileSizeBytes
+                },
+                cancellationToken);
+            
             return response;
         }
         catch (InvalidOperationException ex)
@@ -255,11 +258,15 @@ public sealed partial class UploadFunctions
             LogConfigurationError(ex);
             HttpResponseData errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             errorResponse.Headers.Add("Content-Type", "application/json");
-            await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
-            {
-                error = "Internal server error",
-                message = ex.Message
-            }));
+
+            await errorResponse.WriteStringAsync(
+                JsonSerializer.Serialize(new
+                {
+                    error = "Internal server error",
+                    message = ex.Message
+                }),
+                cancellationToken);
+            
             return errorResponse;
         }
         catch (Exception ex)
@@ -267,11 +274,15 @@ public sealed partial class UploadFunctions
             LogUnexpectedError(ex);
             HttpResponseData errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             errorResponse.Headers.Add("Content-Type", "application/json");
-            await errorResponse.WriteStringAsync(JsonSerializer.Serialize(new
-            {
-                error = "Internal server error",
-                message = "An unexpected error occurred while uploading the file"
-            }));
+            
+            await errorResponse.WriteStringAsync(
+                JsonSerializer.Serialize(new
+                {
+                    error = "Internal server error",
+                    message = "An unexpected error occurred while uploading the file"
+                }),
+                cancellationToken);
+            
             return errorResponse;
         }
     }
@@ -289,14 +300,14 @@ public sealed partial class UploadFunctions
     /// </returns>
     [Function("RetryJob")]
     public async Task<HttpResponseData> RetryJob(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/jobs/{jobId}/retry")]
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "jobs/{jobId}/retry")]
         HttpRequestData req, string jobId, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(jobId, out Guid parsedJobId))
         {
             HttpResponseData badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await badResponse.WriteAsJsonAsync(new { error = "Invalid job ID format" },
-                cancellationToken: cancellationToken);
+            await badResponse.WriteAsJsonAsync(new { error = "Invalid job ID format" }, cancellationToken);
+            
             return badResponse;
         }
 
@@ -305,18 +316,16 @@ public sealed partial class UploadFunctions
         if (success)
         {
             // Re-enqueue to Service Bus
-            // await _messagingService.EnqueueJobAsync(
-            //     jobId: parsedJobId,
-            //     documentId: /* you'll need to fetch this */,
-            //     correlationId: parsedJobId.ToString()
-            // );
+            await _messagingService.EnqueueJobAsync(
+                jobId: parsedJobId,
+                correlationId: parsedJobId.ToString(),
+                cancellationToken);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(new
-            {
-                message = "Job re-queued for retry",
-                jobId = parsedJobId
-            }, cancellationToken: cancellationToken);
+            await response.WriteAsJsonAsync(
+                new { message = "Job re-queued for retry", jobId = parsedJobId },
+                cancellationToken);
+
             return response;
         }
         else

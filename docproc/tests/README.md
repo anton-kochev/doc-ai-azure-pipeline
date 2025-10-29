@@ -6,10 +6,10 @@ This guide covers testing practices for the DocProcessing solution, focusing on 
 
 The solution uses **compile-time logging source generation** via `[LoggerMessage]` attributes for better performance. Choose the appropriate logger based on whether you need to test logging behavior:
 
-| Logger Type | Use When | Example |
-|-------------|----------|---------|
+| Logger Type         | Use When                                             | Example                                                        |
+|---------------------|------------------------------------------------------|----------------------------------------------------------------|
 | **`FakeLogger<T>`** | Testing logging behavior (asserting on log messages) | `_logger.VerifyWasCalled(LogLevel.Information, "Job created")` |
-| **`NullLogger<T>`** | Logger is only a dependency (no logging assertions) | `new MyService(NullLogger<MyService>.Instance)` |
+| **`NullLogger<T>`** | Logger is only a dependency (no logging assertions)  | `new MyService(NullLogger<MyService>.Instance)`                |
 
 **Quick Rule:** If your test uses `_logger.VerifyWasCalled()`, `_logger.Collector`, or checks log content → use `FakeLogger<T>`. Otherwise → use `NullLogger<T>`.
 

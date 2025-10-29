@@ -14,6 +14,8 @@ namespace DocProcessing.Orchestrator.Functions;
 /// </summary>
 public partial class DocumentIngestionTrigger
 {
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
+    
     private readonly ILogger<DocumentIngestionTrigger> _logger;
 
     public DocumentIngestionTrigger(ILogger<DocumentIngestionTrigger> logger)
@@ -44,12 +46,8 @@ public partial class DocumentIngestionTrigger
             try
             {
                 // Deserialize message body
-                payload = JsonSerializer.Deserialize<ProcessDocumentMessage>(
-                    message.Body.ToString(),
-                    new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                payload = JsonSerializer
+                    .Deserialize<ProcessDocumentMessage>(message.Body.ToString(), JsonSerializerOptions);
 
                 // Validate message
                 (bool isValid, string? errorMessage) = MessageValidator.Validate(payload);

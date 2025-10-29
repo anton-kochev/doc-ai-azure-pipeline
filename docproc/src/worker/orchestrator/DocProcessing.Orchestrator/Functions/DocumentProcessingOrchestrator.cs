@@ -41,36 +41,40 @@ public class DocumentProcessingOrchestrator
 
         if (!Guid.TryParse(input.JobId, out Guid jobId))
         {
-            throw new ArgumentException($"Invalid JobId format: {input.JobId}", nameof(input));
+            throw new ArgumentException($"Invalid JobId format", nameof(context));
         }
 
         logger.LogInformation(
-            "Starting document processing orchestration for JobId: {JobId}, DocumentId: {DocumentId}, CorrelationId: {CorrelationId}",
+            "Starting document processing orchestration for JobId: {JobId}, CorrelationId: {CorrelationId}",
             input.JobId,
-            input.DocumentId,
             input.CorrelationId);
 
         try
         {
-            // Step 1: Retrieve and validate the job from the database
-            ProcessJobModel? job = await context.CallActivityAsync<ProcessJobModel?>(nameof(GetJob), jobId);
-            if (job == null)
-            {
+            ProcessJobModel job =
+                await context.CallActivityAsync<ProcessJobModel?>(nameof(GetJob), jobId) ??
                 throw new InvalidOperationException($"Job {jobId} not found in database");
-            }
 
-            // Step 2: Start processing (Pending → Processing)
+            Document document =
+                await context.CallActivityAsync<Document?>(nameof(GetDocument), job.DocumentId) ??
+                throw new InvalidOperationException($"Document {job.DocumentId} not found in database for Job {jobId}");
+            
+            logger.LogInformation(
+                "Retrieved document {DocumentId} from database. BlobContainer: {BlobContainer}, BlobPath: {BlobPath}",
+                document.DocumentId,
+                document.BlobContainer,
+                document.BlobPath);
+
+            // Step 3: Start processing (Pending → Processing)
             logger.LogInformation("Starting job {JobId}", jobId);
-            bool started = await context.CallActivityAsync<bool>(
-                nameof(StartJob),
-                jobId);
+            bool started = await context.CallActivityAsync<bool>(nameof(StartJob), jobId);
 
             if (!started)
             {
                 throw new InvalidOperationException($"Failed to start job {jobId}");
             }
 
-            // Step 3: Execute all stages in sequence
+            // Step 4: Execute all stages in sequence
             foreach (ProcessJobStage stage in ProcessingStages)
             {
                 logger.LogInformation(
@@ -81,14 +85,14 @@ public class DocumentProcessingOrchestrator
                 // Update stage in job representation
                 job = job with { Stage = stage };
 
-                // Build stage context
+                // Build stage context using data from the database
                 Dictionary<string, object> metadata = new()
                 {
                     ["JobId"] = jobId.ToString(),
-                    ["DocumentId"] = input.DocumentId ?? string.Empty,
-                    ["BlobContainer"] = input.BlobContainer ?? string.Empty,
-                    ["BlobPath"] = input.BlobPath ?? string.Empty,
-                    ["TenantId"] = input.TenantId ?? string.Empty,
+                    ["DocumentId"] = document.DocumentId.ToString(),
+                    ["BlobContainer"] = document.BlobContainer,
+                    ["BlobPath"] = document.BlobPath,
+                    ["TenantId"] = document.TenantId?.ToString() ?? string.Empty,
                     ["ExtractionProfile"] = input.ExtractionProfile ?? string.Empty
                 };
 
