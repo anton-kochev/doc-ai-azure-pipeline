@@ -30,8 +30,10 @@ public interface IProcessJobService
     /// </summary>
     /// <param name="jobId">The ID of the job to retry.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A tuple containing a success flag and the correlation ID if successful, or (false, null) if the job doesn't exist or is not in Failed status.</returns>
-    Task<(bool Success, string? CorrelationId)> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+    /// <returns>The correlation ID of the retried job.</returns>
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Failed status.</exception>
+    Task<string> RetryFailedJobAsync(Guid jobId, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Computes the idempotency key for a job based on tenant, document hash, and extraction profile.
@@ -47,16 +49,20 @@ public interface IProcessJobService
     /// </summary>
     /// <param name="jobId">The ID of the job to start processing.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the transition was successful, false if the job was not in Pending status.</returns>
-    Task<bool> StartProcessingAsync(Guid jobId, CancellationToken cancellationToken = default);
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Pending status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to acquire the job due to concurrency conflicts after retries.</exception>
+    Task StartProcessingAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Transitions a job from Processing to Completed status.
     /// </summary>
     /// <param name="jobId">The ID of the job to mark as completed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the transition was successful, false if the job was not in Processing status.</returns>
-    Task<bool> CompleteJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Processing status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
+    Task CompleteJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Transitions a job from Processing to Failed status.
@@ -65,6 +71,8 @@ public interface IProcessJobService
     /// <param name="errorCode">Optional error code describing the failure.</param>
     /// <param name="errorMessage">Optional error message describing the failure.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the transition was successful, false if the job was not in Processing status.</returns>
-    Task<bool> FailJobAsync(Guid jobId, string? errorCode = null, string? errorMessage = null, CancellationToken cancellationToken = default);
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Processing status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
+    Task FailJobAsync(Guid jobId, string? errorCode = null, string? errorMessage = null, CancellationToken cancellationToken = default);
 }

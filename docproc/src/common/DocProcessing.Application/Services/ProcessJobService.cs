@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Domain.Entities;
+using DocProcessing.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocProcessing.Application.Services;
@@ -30,7 +31,7 @@ public sealed partial class ProcessJobService : IProcessJobService
     /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
     /// Thrown when the database update operation fails.
     /// </exception>
-    public async Task<(bool Success, string? CorrelationId)> RetryFailedJobAsync(
+    public async Task<string> RetryFailedJobAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
@@ -41,13 +42,13 @@ public sealed partial class ProcessJobService : IProcessJobService
         if (job == null)
         {
             LogJobNotFoundForRetry(jobId);
-            return (false, null);
+            throw new JobNotFoundException(jobId);
         }
 
         if (job.Status != ProcessJobStatus.Failed)
         {
             LogCannotRetryJobNotFailed(job.CorrelationId, job.JobId, job.Status);
-            return (false, null);
+            throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Pending);
         }
 
         _dbContext.ProcessJobs.Attach(job);
@@ -60,7 +61,7 @@ public sealed partial class ProcessJobService : IProcessJobService
 
         LogJobTransitionedToPendingForRetry(job.CorrelationId, job.JobId, job.Attempts);
 
-        return (true, job.CorrelationId);
+        return job.CorrelationId;
     }
 
     /// <inheritdoc />
@@ -148,18 +149,18 @@ public sealed partial class ProcessJobService : IProcessJobService
     /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
     /// Thrown when the database update operation fails.
     /// </exception>
-    public async Task<bool> StartProcessingAsync(
+    public async Task StartProcessingAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
+        ProcessJob updatedJob = await TryUpdateJobAsync(
             jobId,
             job =>
             {
                 if (job.Status != ProcessJobStatus.Pending)
                 {
                     LogCannotStartProcessingNotPending(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidOperationException($"Job is not in Pending status (current={job.Status})");
+                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Processing);
                 }
                 job.Status = ProcessJobStatus.Processing;
                 job.StartedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
@@ -168,12 +169,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             "StartProcessing",
             cancellationToken);
 
-        if (success)
-        {
-            LogJobTransitionedToProcessing(updatedJob!.CorrelationId, updatedJob.JobId, updatedJob.Attempts);
-        }
-
-        return success;
+        LogJobTransitionedToProcessing(updatedJob.CorrelationId, updatedJob.JobId, updatedJob.Attempts);
     }
 
     /// <inheritdoc />
@@ -183,18 +179,18 @@ public sealed partial class ProcessJobService : IProcessJobService
     /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
     /// Thrown when the database update operation fails.
     /// </exception>
-    public async Task<bool> CompleteJobAsync(
+    public async Task CompleteJobAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
+        ProcessJob updatedJob = await TryUpdateJobAsync(
             jobId,
             job =>
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
                     LogCannotCompleteNotProcessing(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
+                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Completed);
                 }
                 job.Status = ProcessJobStatus.Completed;
                 job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
@@ -202,12 +198,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             "Complete",
             cancellationToken);
 
-        if (success)
-        {
-            LogJobCompletedSuccessfully(updatedJob!.CorrelationId, updatedJob.JobId, updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
-        }
-
-        return success;
+        LogJobCompletedSuccessfully(updatedJob.CorrelationId, updatedJob.JobId, updatedJob.CompletedAtUtc - updatedJob.StartedAtUtc);
     }
 
     /// <inheritdoc />
@@ -217,20 +208,20 @@ public sealed partial class ProcessJobService : IProcessJobService
     /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
     /// Thrown when the database update operation fails.
     /// </exception>
-    public async Task<bool> FailJobAsync(
+    public async Task FailJobAsync(
         Guid jobId,
         string? errorCode = null,
         string? errorMessage = null,
         CancellationToken cancellationToken = default)
     {
-        (bool success, ProcessJob? updatedJob) = await TryUpdateJobAsync(
+        ProcessJob updatedJob = await TryUpdateJobAsync(
             jobId,
             job =>
             {
                 if (job.Status != ProcessJobStatus.Processing)
                 {
                     LogCannotFailNotProcessing(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidOperationException($"Job is not in Processing status (current={job.Status})");
+                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Failed);
                 }
                 job.Status = ProcessJobStatus.Failed;
                 job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
@@ -240,15 +231,10 @@ public sealed partial class ProcessJobService : IProcessJobService
             "Fail",
             cancellationToken);
 
-        if (success)
-        {
-            LogJobFailed(updatedJob!.CorrelationId, jobId, errorCode, errorMessage);
-        }
-
-        return success;
+        LogJobFailed(updatedJob.CorrelationId, jobId, errorCode, errorMessage);
     }
 
-    private async Task<(bool Success, ProcessJob? Job)> TryUpdateJobAsync(
+    private async Task<ProcessJob> TryUpdateJobAsync(
         Guid jobId,
         Action<ProcessJob> updateAction,
         string actionName,
@@ -263,7 +249,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             if (job == null)
             {
                 LogCannotUpdateJobNotFound(actionName, jobId);
-                return (false, null);
+                throw new JobNotFoundException(jobId);
             }
 
             try
@@ -273,13 +259,12 @@ public sealed partial class ProcessJobService : IProcessJobService
                 // Detach the entity after successful save to prevent tracking conflicts in subsequent operations
                 _dbContext.Entry(job).State = EntityState.Detached;
 
-                return (Success: true, Job: job);
+                return job;
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidStateTransitionException)
             {
-                LogInvalidOperationWhenUpdatingJob(ex, actionName, job.JobId, ex.Message);
-
-                return (false, Job: job);
+                // Rethrow domain exceptions immediately - these are not retryable
+                throw;
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -291,7 +276,7 @@ public sealed partial class ProcessJobService : IProcessJobService
                 if (attempt == maxRetries - 1)
                 {
                     throw new InvalidOperationException(
-                        $"Failed to start job {jobId} after {maxRetries} attempts due to concurrency conflicts", ex);
+                        $"Failed to {actionName} job {jobId} after {maxRetries} attempts due to concurrency conflicts", ex);
                 }
 
                 // Exponential backoff before retry
@@ -301,7 +286,8 @@ public sealed partial class ProcessJobService : IProcessJobService
             }
         }
 
-        return (Success: false, Job: null);
+        // This line should never be reached, but is needed for compilation
+        throw new InvalidOperationException($"Failed to {actionName} job {jobId} after unexpected error");
     }
 
     // Source-generated logging methods
