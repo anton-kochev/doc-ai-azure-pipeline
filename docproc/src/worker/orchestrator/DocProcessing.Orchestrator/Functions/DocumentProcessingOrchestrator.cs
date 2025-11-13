@@ -67,12 +67,7 @@ public class DocumentProcessingOrchestrator
 
             // Step 3: Start processing (Pending → Processing)
             logger.LogInformation("Starting job {JobId}", jobId);
-            bool started = await context.CallActivityAsync<bool>(nameof(StartJob), jobId);
-
-            if (!started)
-            {
-                throw new InvalidOperationException($"Failed to start job {jobId}");
-            }
+            await context.CallActivityAsync(nameof(StartJob), jobId);
 
             // Step 4: Execute all stages in sequence
             foreach (ProcessJobStage stage in ProcessingStages)
@@ -115,7 +110,7 @@ public class DocumentProcessingOrchestrator
                         result.ErrorMessage);
 
                     // Fail the job
-                    await context.CallActivityAsync<bool>(
+                    await context.CallActivityAsync(
                         nameof(FailJob),
                         new FailJobRequest(
                             jobId,
@@ -134,14 +129,7 @@ public class DocumentProcessingOrchestrator
 
             // Step 4: Complete the job (Processing → Completed)
             logger.LogInformation("Completing job {JobId}", jobId);
-            bool completed = await context.CallActivityAsync<bool>(
-                nameof(CompleteJob),
-                jobId);
-
-            if (!completed)
-            {
-                throw new InvalidOperationException($"Failed to complete job {jobId}");
-            }
+            await context.CallActivityAsync(nameof(CompleteJob), jobId);
 
             logger.LogInformation(
                 "Document processing orchestration completed successfully for JobId: {JobId}",

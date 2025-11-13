@@ -29,7 +29,7 @@ public sealed class FailJob
     }
 
     [Function(nameof(FailJob))]
-    public async Task<bool> RunAsync(
+    public async Task RunAsync(
         [ActivityTrigger] FailJobRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -40,17 +40,12 @@ public sealed class FailJob
             request.JobId,
             request.ErrorCode);
 
-        bool result = await _jobService.FailJobAsync(
+        await _jobService.FailJobAsync(
             request.JobId,
             request.ErrorCode,
             request.ErrorMessage,
             cancellationToken);
 
-        if (!result)
-        {
-            _logger.LogWarning("Failed to update job {JobId} to Failed status", request.JobId);
-        }
-
-        return result;
+        _logger.LogInformation("Successfully failed job {JobId}", request.JobId);
     }
 }

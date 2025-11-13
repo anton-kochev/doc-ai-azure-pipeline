@@ -21,19 +21,14 @@ public sealed class CompleteJob
     }
 
     [Function(nameof(CompleteJob))]
-    public async Task<bool> RunAsync(
+    public async Task RunAsync(
         [ActivityTrigger] Guid jobId,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Completing job {JobId}", jobId);
 
-        bool result = await _jobService.CompleteJobAsync(jobId, cancellationToken);
+        await _jobService.CompleteJobAsync(jobId, cancellationToken);
 
-        if (!result)
-        {
-            _logger.LogWarning("Failed to complete job {JobId}", jobId);
-        }
-
-        return result;
+        _logger.LogInformation("Successfully completed job {JobId}", jobId);
     }
 }

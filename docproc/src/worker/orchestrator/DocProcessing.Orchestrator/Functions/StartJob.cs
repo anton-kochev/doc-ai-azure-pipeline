@@ -21,19 +21,14 @@ public sealed class StartJob
     }
 
     [Function(nameof(StartJob))]
-    public async Task<bool> RunAsync(
+    public async Task RunAsync(
         [ActivityTrigger] Guid jobId,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting job {JobId}", jobId);
 
-        bool result = await _jobService.StartProcessingAsync(jobId, cancellationToken);
+        await _jobService.StartProcessingAsync(jobId, cancellationToken);
 
-        if (!result)
-        {
-            _logger.LogWarning("Failed to start job {JobId}", jobId);
-        }
-
-        return result;
+        _logger.LogInformation("Successfully started job {JobId}", jobId);
     }
 }

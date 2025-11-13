@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using DocProcessing.Api.Options;
 using DocProcessing.Application.Interfaces;
+using DocProcessing.Domain.Exceptions;
 
 namespace DocProcessing.Api.Functions;
 
@@ -311,35 +312,55 @@ public sealed partial class UploadFunctions
         {
             HttpResponseData badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
             await badResponse.WriteAsJsonAsync(new { error = "Invalid job ID format" }, cancellationToken);
-            
+
             return badResponse;
         }
 
-        (bool success, string? correlationId) = await _processJobService.RetryFailedJobAsync(parsedJobId, cancellationToken);
-
-        if (success)
+        try
         {
+            string correlationId = await _processJobService.RetryFailedJobAsync(parsedJobId, cancellationToken);
+
             // Re-enqueue to Service Bus with the original correlation ID
             await _messagingService.EnqueueJobAsync(
                 jobId: parsedJobId,
-                correlationId: correlationId!,
+                correlationId: correlationId,
                 cancellationToken);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(
-                new { message = "Job re-queued for retry", jobId = parsedJobId },
+                new { message = "Job re-queued for retry", jobId = parsedJobId, correlationId },
                 cancellationToken);
 
             return response;
         }
-        else
+        catch (JobNotFoundException ex)
         {
+            _logger.LogWarning(ex, "Job not found for retry. JobId={JobId}", ex.JobId);
+
             HttpResponseData notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
             await notFoundResponse.WriteAsJsonAsync(new
             {
-                error = "Job not found or not in Failed status"
-            }, cancellationToken: cancellationToken);
+                error = "Job not found",
+                jobId = ex.JobId
+            }, cancellationToken);
             return notFoundResponse;
+        }
+        catch (InvalidStateTransitionException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid state for retry. JobId={JobId}, CurrentStatus={CurrentStatus}",
+                ex.JobId,
+                ex.CurrentStatus);
+
+            HttpResponseData unprocessableResponse = req.CreateResponse(HttpStatusCode.UnprocessableEntity);
+            await unprocessableResponse.WriteAsJsonAsync(new
+            {
+                error = "Job is not in a retryable state",
+                jobId = ex.JobId,
+                currentStatus = ex.CurrentStatus.ToString()
+            }, cancellationToken);
+            return unprocessableResponse;
         }
     }
 

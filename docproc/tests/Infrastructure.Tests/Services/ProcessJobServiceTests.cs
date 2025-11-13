@@ -1,5 +1,6 @@
 using DocProcessing.Application.Services;
 using DocProcessing.Domain.Entities;
+using DocProcessing.Domain.Exceptions;
 using DocProcessing.TestUtilities.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -561,10 +562,9 @@ public class ProcessJobServiceTests : IDisposable
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
         // Act
-        bool result = await _service.StartProcessingAsync(jobId);
+        await _service.StartProcessingAsync(jobId);
 
         // Assert
-        Assert.True(result);
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         Assert.Equal(ProcessJobStatus.Processing, job.Status);
@@ -611,20 +611,21 @@ public class ProcessJobServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task StartProcessingAsync_WhenJobNotFound_ReturnsFalse()
+    public async Task StartProcessingAsync_WhenJobNotFound_ThrowsJobNotFoundException()
     {
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        bool result = await _service.StartProcessingAsync(nonExistentJobId);
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.StartProcessingAsync(nonExistentJobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task StartProcessingAsync_WhenJobIsProcessing_ReturnsFalse()
+    public async Task StartProcessingAsync_WhenJobIsProcessing_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -636,15 +637,17 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Processing;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.StartProcessingAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.StartProcessingAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Processing, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task StartProcessingAsync_WhenJobIsCompleted_ReturnsFalse()
+    public async Task StartProcessingAsync_WhenJobIsCompleted_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -656,15 +659,17 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Completed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.StartProcessingAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.StartProcessingAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task StartProcessingAsync_WhenJobIsFailed_ReturnsFalse()
+    public async Task StartProcessingAsync_WhenJobIsFailed_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -676,11 +681,13 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Failed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.StartProcessingAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.StartProcessingAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
     }
 
     [Fact]
@@ -705,8 +712,9 @@ public class ProcessJobServiceTests : IDisposable
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        await _service.StartProcessingAsync(nonExistentJobId);
+        // Act & Assert
+        await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.StartProcessingAsync(nonExistentJobId));
 
         // Assert - Verify log entry was created with expected message
         _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
@@ -726,10 +734,9 @@ public class ProcessJobServiceTests : IDisposable
         await _service.StartProcessingAsync(jobId);
 
         // Act
-        bool result = await _service.CompleteJobAsync(jobId);
+        await _service.CompleteJobAsync(jobId);
 
         // Assert
-        Assert.True(result);
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         Assert.Equal(ProcessJobStatus.Completed, job.Status);
@@ -760,35 +767,38 @@ public class ProcessJobServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CompleteJobAsync_WhenJobNotFound_ReturnsFalse()
+    public async Task CompleteJobAsync_WhenJobNotFound_ThrowsJobNotFoundException()
     {
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        bool result = await _service.CompleteJobAsync(nonExistentJobId);
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.CompleteJobAsync(nonExistentJobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task CompleteJobAsync_WhenJobIsPending_ReturnsFalse()
+    public async Task CompleteJobAsync_WhenJobIsPending_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
         byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
-        // Act
-        bool result = await _service.CompleteJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.CompleteJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Pending, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Completed, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task CompleteJobAsync_WhenJobIsAlreadyCompleted_ReturnsFalse()
+    public async Task CompleteJobAsync_WhenJobIsAlreadyCompleted_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -800,15 +810,17 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Completed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.CompleteJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.CompleteJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Completed, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task CompleteJobAsync_WhenJobIsFailed_ReturnsFalse()
+    public async Task CompleteJobAsync_WhenJobIsFailed_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -820,11 +832,13 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Failed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.CompleteJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.CompleteJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Completed, exception.AttemptedStatus);
     }
 
     [Fact]
@@ -850,8 +864,9 @@ public class ProcessJobServiceTests : IDisposable
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        await _service.CompleteJobAsync(nonExistentJobId);
+        // Act & Assert
+        await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.CompleteJobAsync(nonExistentJobId));
 
         // Assert - Verify log entry was created with expected message
         _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
@@ -871,10 +886,9 @@ public class ProcessJobServiceTests : IDisposable
         await _service.StartProcessingAsync(jobId);
 
         // Act
-        bool result = await _service.FailJobAsync(jobId, "TEST_ERROR", "Test error message");
+        await _service.FailJobAsync(jobId, "TEST_ERROR", "Test error message");
 
         // Assert
-        Assert.True(result);
         ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
         Assert.NotNull(job);
         Assert.Equal(ProcessJobStatus.Failed, job.Status);
@@ -946,35 +960,38 @@ public class ProcessJobServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task FailJobAsync_WhenJobNotFound_ReturnsFalse()
+    public async Task FailJobAsync_WhenJobNotFound_ThrowsJobNotFoundException()
     {
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        bool result = await _service.FailJobAsync(nonExistentJobId);
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.FailJobAsync(nonExistentJobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task FailJobAsync_WhenJobIsPending_ReturnsFalse()
+    public async Task FailJobAsync_WhenJobIsPending_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
         byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
         (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
 
-        // Act
-        bool result = await _service.FailJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.FailJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Pending, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task FailJobAsync_WhenJobIsCompleted_ReturnsFalse()
+    public async Task FailJobAsync_WhenJobIsCompleted_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -986,15 +1003,17 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Completed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.FailJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.FailJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
     }
 
     [Fact]
-    public async Task FailJobAsync_WhenJobIsAlreadyFailed_ReturnsFalse()
+    public async Task FailJobAsync_WhenJobIsAlreadyFailed_ThrowsInvalidStateTransitionException()
     {
         // Arrange
         Guid documentId = Guid.NewGuid();
@@ -1006,11 +1025,13 @@ public class ProcessJobServiceTests : IDisposable
         job.Status = ProcessJobStatus.Failed;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
-        // Act
-        bool result = await _service.FailJobAsync(jobId);
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.FailJobAsync(jobId));
 
-        // Assert
-        Assert.False(result);
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
     }
 
     [Fact]
@@ -1040,11 +1061,150 @@ public class ProcessJobServiceTests : IDisposable
         // Arrange
         Guid nonExistentJobId = Guid.NewGuid();
 
-        // Act
-        await _service.FailJobAsync(nonExistentJobId);
+        // Act & Assert
+        await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.FailJobAsync(nonExistentJobId));
 
         // Assert - Verify log entry was created with expected message
         _logger.VerifyWasCalled(LogLevel.Warning, "Cannot update job. Job not found");
+    }
+
+    #endregion
+
+    #region RetryFailedJobAsync Tests
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobIsFailed_ResetsJobToPendingAndReturnsCorrelationId()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        // Move job to Failed state
+        await _service.StartProcessingAsync(jobId);
+        await _service.FailJobAsync(jobId, "TEST_ERROR", "Test error message");
+
+        ProcessJob? failedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(failedJob);
+        Assert.Equal(ProcessJobStatus.Failed, failedJob.Status);
+
+        // Act
+        string correlationId = await _service.RetryFailedJobAsync(jobId);
+
+        // Assert
+        ProcessJob? retriedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(retriedJob);
+        Assert.Equal(ProcessJobStatus.Pending, retriedJob.Status);
+        Assert.Equal(ProcessJobStage.Uploaded, retriedJob.Stage);
+        Assert.NotEmpty(correlationId);
+        Assert.Equal(correlationId, retriedJob.CorrelationId);
+        Assert.True(Guid.TryParse(correlationId, out _)); // Should be a valid GUID
+    }
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobIsFailed_ClearsErrorInformation()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        await _service.StartProcessingAsync(jobId);
+        await _service.FailJobAsync(jobId, "ORIGINAL_ERROR", "Original error message");
+
+        ProcessJob? failedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(failedJob);
+        Assert.Equal("ORIGINAL_ERROR", failedJob.LastErrorCode);
+        Assert.Equal("Original error message", failedJob.LastErrorMessage);
+
+        // Act
+        await _service.RetryFailedJobAsync(jobId);
+
+        // Assert
+        ProcessJob? retriedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(retriedJob);
+        Assert.Null(retriedJob.LastErrorCode);
+        Assert.Null(retriedJob.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobIsFailed_ClearsTimestamps()
+    {
+        // Arrange
+        DateTimeOffset startTime = new(2024, 1, 15, 10, 30, 0, TimeSpan.Zero);
+        _timeProvider.SetUtcNow(startTime);
+
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        await _service.StartProcessingAsync(jobId);
+        _timeProvider.Advance(TimeSpan.FromMinutes(5));
+        await _service.FailJobAsync(jobId, "TEST_ERROR", "Test error");
+
+        ProcessJob? failedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(failedJob);
+        Assert.NotNull(failedJob.StartedAtUtc);
+        Assert.NotNull(failedJob.CompletedAtUtc);
+
+        // Act
+        await _service.RetryFailedJobAsync(jobId);
+
+        // Assert
+        ProcessJob? retriedJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(retriedJob);
+        Assert.Null(retriedJob.StartedAtUtc);
+        Assert.Null(retriedJob.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobNotFound_ThrowsJobNotFoundException()
+    {
+        // Arrange
+        Guid nonExistentJobId = Guid.NewGuid();
+
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.RetryFailedJobAsync(nonExistentJobId));
+
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobIsPending_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RetryFailedJobAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Pending, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Pending, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RetryFailedJobAsync_WhenJobIsProcessing_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RetryFailedJobAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Processing, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Pending, exception.AttemptedStatus);
     }
 
     #endregion

@@ -36,7 +36,6 @@ public sealed partial class ProcessJobService : IProcessJobService
         CancellationToken cancellationToken = default)
     {
         ProcessJob? job = await _dbContext.ProcessJobs
-            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.JobId == jobId, cancellationToken);
 
         if (job == null)
@@ -50,12 +49,13 @@ public sealed partial class ProcessJobService : IProcessJobService
             LogCannotRetryJobNotFailed(job.CorrelationId, job.JobId, job.Status);
             throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Pending);
         }
-
-        _dbContext.ProcessJobs.Attach(job);
+        
         job.Status = ProcessJobStatus.Pending;
         job.Stage = ProcessJobStage.Uploaded;
         job.LastErrorCode = null;
         job.LastErrorMessage = null;
+        job.StartedAtUtc = null;
+        job.CompletedAtUtc = null;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -244,6 +244,9 @@ public sealed partial class ProcessJobService : IProcessJobService
 
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
+            // Check for cancellation before making database call
+            cancellationToken.ThrowIfCancellationRequested();
+
             ProcessJob? job = await _dbContext.ProcessJobs.FindAsync([jobId], cancellationToken);
 
             if (job == null)
@@ -279,10 +282,17 @@ public sealed partial class ProcessJobService : IProcessJobService
                         $"Failed to {actionName} job {jobId} after {maxRetries} attempts due to concurrency conflicts", ex);
                 }
 
-                // Exponential backoff before retry
-                await Task.Delay(
-                    TimeSpan.FromMilliseconds(Math.Pow(2, attempt) * 100),
-                    cancellationToken);
+                // Exponential backoff with proper cancellation support
+                try
+                {
+                    int delayMs = (int)Math.Pow(2, attempt) * 100;
+                    await Task.Delay(delayMs, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    LogOperationCancelledDuringRetry(actionName, jobId, attempt + 1);
+                    throw;
+                }
             }
         }
 
@@ -380,4 +390,10 @@ public sealed partial class ProcessJobService : IProcessJobService
         Level = LogLevel.Warning,
         Message = "{Action}: Concurrency conflict when updating job. JobId={JobId}, Attempt={Attempt}")]
     private partial void LogConcurrencyConflictWhenUpdatingJob(Exception exception, string action, Guid jobId, int attempt);
+
+    [LoggerMessage(
+        EventId = 16,
+        Level = LogLevel.Information,
+        Message = "{Action}: Operation cancelled during retry. JobId={JobId}, Attempt={Attempt}")]
+    private partial void LogOperationCancelledDuringRetry(string action, Guid jobId, int attempt);
 }
