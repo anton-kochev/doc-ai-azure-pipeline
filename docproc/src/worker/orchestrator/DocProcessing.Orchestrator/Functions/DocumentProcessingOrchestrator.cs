@@ -147,7 +147,7 @@ public class DocumentProcessingOrchestrator
             // Attempt to mark the job as failed if not already done
             try
             {
-                await context.CallActivityAsync<bool>(
+                await context.CallActivityAsync(
                     nameof(FailJob),
                     new FailJobRequest(
                         jobId,
