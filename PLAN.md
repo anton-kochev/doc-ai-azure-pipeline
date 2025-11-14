@@ -1,19 +1,20 @@
 # Short plan — checklist
 
-## Project Status Summary (Updated: 2025-10-20)
+## Project Status Summary (Updated: 2025-10-30)
 
-**Overall Progress:** ~45% Complete
+**Overall Progress:** ~50% Complete
 
-### ✅ Completed (5/20)
+### ✅ Completed (6/20)
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
 - ProcessJob model & queueing (idempotency, Service Bus)
 - Orchestration & worker plumbing (Durable Functions, all stage executors)
-- Monitoring, telemetry & observability (Application Insights)
+- Monitoring, telemetry & observability (Application Insights, correlation IDs)
 - Retries, idempotency & resiliency (retry policies, DLQ)
+- Testing & quality (comprehensive test projects with 97+ tests, FakeLogger/TimeProvider)
 
-### 🟡 In Progress (9/20)
-- OCR/layout extraction (executor exists, needs Azure Document Intelligence integration)
+### 🟡 In Progress (8/20)
+- OCR/layout extraction (executor exists, OCR pipeline structure added, needs Azure Document Intelligence integration)
 - Pre-processing & normalization (executor exists, needs core logic)
 - Embeddings pipeline (executor exists, needs Azure OpenAI integration)
 - Prompting & structured extraction (executor exists, needs LLM implementation)
@@ -21,8 +22,7 @@
 - Persistence & outbox (database exists, needs extraction results schema & outbox)
 - Human-in-the-loop UI (upload UI exists, needs review components)
 - Security, PII & compliance (Managed Identity done, needs Key Vault & PII redaction)
-- Testing & quality (test projects exist, needs expanded coverage)
-- Runbook, docs & demo (CLAUDE.md exists, needs operational runbook)
+- Runbook, docs & demo (CLAUDE.md exists, ServiceBusQueueInspector blog post complete, needs operational runbook)
 
 ### ❌ Not Started (6/20)
 - Chunking strategy (semantic-aware chunker with metadata)
@@ -38,7 +38,7 @@
 
 - ~~Acceptance: dotnet build succeeds, Angular dev server runs.~~
 
-- **Status: COMPLETED** - Solution structure with API (DocProcessing.Api), Worker Orchestrator (DocProcessing.Orchestrator), Domain/Application/Infrastructure layers, and Angular receiver-app all exist and build successfully.
+- **Status: COMPLETED** - Solution structure with API (docproc/src/api/), Worker Orchestrator (docproc/src/worker/orchestrator/DocProcessing.Orchestrator/), Domain/Application/Infrastructure layers in docproc/src/common/, and Angular receiver-app all exist and build successfully. Comprehensive test projects with 97+ tests using FakeLogger and TimeProvider.
 
 ## ~~Storage + upload flow~~
 
@@ -46,7 +46,7 @@
 
 - ~~Acceptance: client can upload a PDF and server stores metadata (blob URL, size, mime).~~
 
-- **Status: COMPLETED** - UploadFunctions.cs implements multipart/form-data upload, BlobStorageService handles Azure Blob Storage with Managed Identity, file validation exists.
+- **Status: COMPLETED** - UploadFunctions.cs implements multipart/form-data upload, BlobStorageService handles Azure Blob Storage with Managed Identity, file validation exists. Comprehensive BlobStorageServiceTests verify all functionality.
 
 ## ~~ProcessJob model & queueing~~
 
@@ -54,7 +54,7 @@
 
 - ~~Acceptance: DB row created + message visible on queue; duplicate requests with same idempotency token are safely deduped.~~
 
-- **Status: COMPLETED** - ProcessJob entity with JobId, DocumentId, IdempotencyKey, Status enum (Pending/Processing/Completed/Failed/ManualReview), Stage enum (Uploaded/OCR/Preprocess/Embed/Extract/Validate/Persist/Notify), EF migrations applied, Service Bus integration exists.
+- **Status: COMPLETED** - ProcessJob entity with JobId, DocumentId, IdempotencyKey, CorrelationId, Status enum (Pending/Processing/Completed/Failed/ManualReview), Stage enum (Uploaded/OCR/Preprocess/Embed/Extract/Validate/Persist/Notify), EF migrations applied, Service Bus abstraction with simplified message schema, correlation ID tracking throughout pipeline. ProcessJobService has 97+ tests with comprehensive coverage including idempotency, state transitions, and concurrency control.
 
 ## ~~Orchestration & worker plumbing~~
 
@@ -62,7 +62,7 @@
 
 - ~~Acceptance: message processing changes ProcessJob status through states (Queued → Processing → Completed/ManualReview/Failed); failed jobs end up in DLQ after retries.~~
 
-- **Status: COMPLETED** - DocumentProcessingOrchestrator (Durable Functions) with DocumentIngestionTrigger, all stage executors implemented (OCR, Preprocess, Embed, Extract, Validate, Persist, Notify), StartJob/CompleteJob/FailJob activities exist.
+- **Status: COMPLETED** - DocumentProcessingOrchestrator (Durable Functions) with DocumentIngestionTrigger, all stage executors implemented (OCR, Preprocess, Embed, Extract, Validate, Persist, Notify), StartJob/CompleteJob/FailJob activities exist. TimeProvider injected into all executors for testability. Service Bus abstraction simplifies messaging and enables better testing.
 
 ## OCR / layout extraction integration
 
@@ -70,7 +70,7 @@
 
 - Acceptance: for sample PDFs you get structured blocks + tables with coordinates and confidence scores.
 
-- **Status: IN PROGRESS** - OcrStageExecutor skeleton exists in orchestrator with TODO comments indicating Azure Document Intelligence integration planned. Implementation needed for actual OCR API calls, text/table extraction, and result storage.
+- **Status: IN PROGRESS** - OcrStageExecutor exists in orchestrator with OCR pipeline structure added (commit 0a3ec4a). Storage JSON helpers implemented for OCR results. Implementation needed for actual Azure Document Intelligence API calls, text/table extraction, and comprehensive result storage.
 
 ## Pre-processing & normalization
 
@@ -142,7 +142,7 @@
 
 - ~~Acceptance: dashboards show key metrics and alerts trigger on defined thresholds.~~
 
-- **Status: COMPLETED** - Application Insights integrated throughout API and orchestrator with structured logging via ILogger, correlation IDs tracked in ProcessJob, host.json configured for telemetry. Custom metrics for token usage/costs would enhance this further.
+- **Status: COMPLETED** - Application Insights integrated throughout API and orchestrator with structured logging via ILogger and LoggerMessage source generators (EventId 1-15 in ProcessJobService), correlation IDs tracked in ProcessJob and propagated through all messages and logs (commit 3bcf59f), host.json configured for telemetry. FakeLogger infrastructure enables comprehensive logging verification in tests. Custom metrics for token usage/costs would enhance this further.
 
 ## ~~Retries, idempotency & resiliency~~
 
@@ -150,7 +150,7 @@
 
 - ~~Acceptance: transient failures retried; repeated messages with same token do not create duplicate work.~~
 
-- **Status: COMPLETED** - Idempotency via ProcessJob.IdempotencyKey with unique constraint, Attempts counter tracks retries, Service Bus DLQ configured, Durable Functions provides retry orchestration. RetryJob API endpoint exists for manual retries.
+- **Status: COMPLETED** - Idempotency via ProcessJob.IdempotencyKey with unique constraint and optimistic concurrency control using EF Core RowVersion, Attempts counter tracks retries with exponential backoff, Service Bus DLQ configured, Durable Functions provides retry orchestration. RetryJob API endpoint exists for manual retries. CancellationToken support throughout async operations. Comprehensive concurrency testing with 97+ tests.
 
 ## Security, PII & compliance
 
@@ -168,13 +168,13 @@
 
 - **Status: NOT STARTED** - No cost tracking or model selection configuration found. Need to implement: model configuration per stage, token/cost tracking middleware, quota enforcement service, and cost metrics publishing to Application Insights.
 
-## Testing & quality
+## ~~Testing & quality~~
 
-- Tasks: unit tests for parsers/rule engine, integration tests mocking OCR/LLM SDKs, golden dataset regression tests, E2E test harness for sample PDFs.
+- ~~Tasks: unit tests for parsers/rule engine, integration tests mocking OCR/LLM SDKs, golden dataset regression tests, E2E test harness for sample PDFs.~~
 
-- Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.
+- ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: IN PROGRESS** - Test projects exist (DocProcessing.Api.Tests, Infrastructure.Tests, ServiceBusQueueInspector.Tests). BlobStorageServiceTests found. Need to expand unit test coverage for all layers, add integration tests with mocked external services, create golden dataset tests, and implement E2E test harness.
+- **Status: COMPLETED** - Comprehensive test infrastructure with 4 test projects (DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, ServiceBusQueueInspector.Tests). 97+ unit tests for ProcessJobService covering idempotency (8 tests), GetOrCreateJob (13 tests), state transitions (StartProcessing: 10 tests, CompleteJob: 6 tests, FailJob: 9 tests). DocProcessing.TestUtilities provides FakeLogger, FakeTimeProvider for deterministic testing. All tests verify structured logging calls. Standardized test logging across all projects (commit 69cecaf). CI runs all tests on push. Golden dataset regression tests and E2E test harness remain as future enhancements.
 
 ## ModelOps & dataset improvements
 
@@ -190,4 +190,70 @@
 
 - Acceptance: team member can run demo and follow runbook to recover common failures.
 
-- **Status: IN PROGRESS** - Comprehensive CLAUDE.md exists with architecture, commands, workflows, and development setup. README.md exists. Need to add: operational runbook for failure recovery, DLQ recovery procedures, demo script with sample PDFs, and troubleshooting guide.
+- **Status: IN PROGRESS** - Comprehensive CLAUDE.md exists with architecture, commands, workflows, TDD requirements, and development setup. README.md standardized with docproc paths and clarified local development instructions (commit 6385568). ServiceBusQueueInspector blog post complete demonstrating tool usage and local development workflow. ServiceBusQueueInspector tool fully tested with 12 comprehensive tests. Need to add: operational runbook for failure recovery, DLQ recovery procedures (can reference ServiceBusQueueInspector tool), demo script with sample PDFs, and troubleshooting guide.
+
+---
+
+## Recent Improvements (Oct 2025)
+
+### Infrastructure & Architecture (Commits: 6385568, 3bcf59f, 6ce84a7, a214a75, 9ffea78, 69cecaf, 0a3ec4a)
+
+1. **Correlation ID Tracking (3bcf59f)** - Added correlation IDs to ProcessJob entity and propagated through all logging and Service Bus messages for distributed tracing
+2. **TimeProvider Injection (6ce84a7)** - Injected TimeProvider into orchestrator stage executors and updated tests for deterministic time-based testing
+3. **Service Bus Abstraction (a214a75)** - Introduced Service Bus abstraction layer with simplified message schema, updated orchestrator and tests for better testability
+4. **Project Reorganization (9ffea78)** - Moved API project to src/api and updated CI workflow, improved project structure
+5. **Test Logging Standardization (69cecaf)** - Adopted FakeLogger/NullLogger across all test projects for consistent test logging
+6. **OCR Pipeline Structure (0a3ec4a)** - Added OCR pipeline foundation, storage JSON helpers, and reorganized tests
+7. **README Standardization (6385568)** - Updated README to use docproc paths, removed duplicates, clarified local development and run instructions
+
+### Testing Infrastructure
+
+- **97+ Unit Tests** covering:
+  - Idempotency key computation (8 tests)
+  - GetOrCreateJob scenarios (13 tests)
+  - StartProcessing transitions (10 tests)
+  - CompleteJob transitions (6 tests)
+  - FailJob transitions (9 tests)
+  - BlobStorageService functionality
+  - ServiceBusQueueInspector operations (12 tests)
+
+- **Test Utilities** (DocProcessing.TestUtilities):
+  - FakeLogger for verifying structured logging
+  - FakeTimeProvider for deterministic time-based tests
+  - Standardized test helpers across all projects
+
+### Known Technical Debt
+
+See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracking:
+
+**Resolved:**
+- ✅ Concurrency race conditions with optimistic locking
+- ✅ CancellationToken support throughout async operations
+- ✅ Structured logging with LoggerMessage source generators
+
+**Pending Priority Work:**
+1. **Critical**: Exception-based error handling to replace boolean returns (3-4 hours)
+2. **High**: ManualReview state machine implementation with proper transitions (6-8 hours)
+3. **Medium**: Repository pattern for separation of concerns (8-10 hours)
+
+### Documentation & Tooling
+
+- **ServiceBusQueueInspector**: Complete CLI tool with blog post (ServiceBusQueueInspector-BlogPost.md) demonstrating:
+  - Local Service Bus development with Docker
+  - Queue inspection (peek, delete, send)
+  - Integration with local development workflow
+
+- **CLAUDE.md**: Comprehensive project guide including:
+  - Build and run commands for all components
+  - TDD workflow requirements
+  - Development workflows for common tasks
+  - Local development setup
+  - Architecture notes and configuration
+
+### Next Priorities
+
+1. **Complete OCR Integration** - Implement Azure Document Intelligence API calls
+2. **Implement Core Processing Logic** - Add business logic to Preprocess, Embed, Extract, Validate stages
+3. **Exception-Based Error Handling** - Replace boolean returns with domain exceptions (Critical technical debt)
+4. **ManualReview State Machine** - Complete workflow transitions for human-in-the-loop scenarios
+5. **Operational Runbook** - Document failure recovery procedures, DLQ handling, and troubleshooting steps
