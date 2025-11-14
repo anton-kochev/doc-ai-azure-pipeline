@@ -17,7 +17,7 @@
   },
   "extensions": {
     "http": {
-      "routePrefix": "",
+      "routePrefix": "api",
       "customHeaders": {
         "Access-Control-Allow-Origin": "https://witty-desert-0a4772003.1.azurestaticapps.net",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

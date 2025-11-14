@@ -138,10 +138,10 @@ yarn-debug.log*
 yarn-error.log*
 
 .claude/settings.local.json
+.claude/
 docproc/knowledge-base/tools/adapters/claude/claude-agent-prompt.md
 docproc/knowledge-base/tools/adapters/claude/claude-kb.json
 docproc/src/api/appsettings.json
 CHANGE-LOG.md
-/.claude/agents
 CLAUDE.md
 /docproc/src/api/output
