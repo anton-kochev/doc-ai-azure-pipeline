@@ -204,6 +204,187 @@ public async Task ProcessMultipleItems_LogsAll()
 }
 ```
 
+## Testing ManualReview State Transitions
+
+The ManualReview state machine enables human-in-the-loop workflows. Testing these transitions requires careful attention to state validation and logging.
+
+### State Machine Overview
+
+**Valid Transitions:**
+```
+Processing → ManualReview  (RequestManualReviewAsync)
+ManualReview → Processing  (ResumeFromManualReviewAsync)
+ManualReview → Failed      (RejectManualReviewAsync)
+```
+
+### Testing Service Methods
+
+**1. RequestManualReviewAsync - Processing → ManualReview**
+
+```csharp
+[Fact]
+public async Task RequestManualReviewAsync_TransitionsToManualReview()
+{
+    // Arrange
+    var job = new ProcessJob
+    {
+        JobId = Guid.NewGuid(),
+        Status = ProcessJobStatus.Processing,
+        Stage = ProcessJobStage.Validate
+    };
+    await _dbContext.ProcessJobs.AddAsync(job);
+    await _dbContext.SaveChangesAsync();
+
+    // Act
+    await _service.RequestManualReviewAsync(
+        job.JobId,
+        "Low confidence score",
+        CancellationToken.None);
+
+    // Assert
+    var updated = await _dbContext.ProcessJobs.FindAsync(job.JobId);
+    Assert.Equal(ProcessJobStatus.ManualReview, updated.Status);
+    Assert.Equal("Low confidence score", updated.LastErrorMessage);
+    Assert.NotNull(updated.CompletedAtUtc);
+
+    // Verify logging
+    _logger.VerifyWasCalled(LogLevel.Information, "Manual review requested");
+}
+```
+
+**2. ResumeFromManualReviewAsync - ManualReview → Processing**
+
+```csharp
+[Fact]
+public async Task ResumeFromManualReviewAsync_TransitionsToProcessing()
+{
+    // Arrange
+    var job = new ProcessJob
+    {
+        JobId = Guid.NewGuid(),
+        Status = ProcessJobStatus.ManualReview,
+        Stage = ProcessJobStage.Validate,
+        Attempts = 1
+    };
+    await _dbContext.ProcessJobs.AddAsync(job);
+    await _dbContext.SaveChangesAsync();
+
+    // Act
+    await _service.ResumeFromManualReviewAsync(job.JobId, CancellationToken.None);
+
+    // Assert
+    var updated = await _dbContext.ProcessJobs.FindAsync(job.JobId);
+    Assert.Equal(ProcessJobStatus.Processing, updated.Status);
+    Assert.Null(updated.CompletedAtUtc); // Cleared on resume
+    Assert.Equal(2, updated.Attempts); // Incremented
+
+    _logger.VerifyWasCalled(LogLevel.Information, "Resumed from manual review");
+}
+```
+
+**3. RejectManualReviewAsync - ManualReview → Failed**
+
+```csharp
+[Fact]
+public async Task RejectManualReviewAsync_TransitionsToFailed()
+{
+    // Arrange
+    var job = new ProcessJob
+    {
+        JobId = Guid.NewGuid(),
+        Status = ProcessJobStatus.ManualReview
+    };
+    await _dbContext.ProcessJobs.AddAsync(job);
+    await _dbContext.SaveChangesAsync();
+
+    // Act
+    await _service.RejectManualReviewAsync(
+        job.JobId,
+        "MANUAL_REJECTION",
+        "Document quality insufficient",
+        CancellationToken.None);
+
+    // Assert
+    var updated = await _dbContext.ProcessJobs.FindAsync(job.JobId);
+    Assert.Equal(ProcessJobStatus.Failed, updated.Status);
+    Assert.Equal("MANUAL_REJECTION", updated.LastErrorCode);
+    Assert.Equal("Document quality insufficient", updated.LastErrorMessage);
+
+    _logger.VerifyWasCalled(LogLevel.Warning, "Rejected during manual review");
+}
+```
+
+### Testing Invalid Transitions
+
+Always test that invalid state transitions throw `InvalidStateTransitionException`:
+
+```csharp
+[Fact]
+public async Task RequestManualReviewAsync_FromCompleted_ThrowsException()
+{
+    // Arrange
+    var job = new ProcessJob
+    {
+        JobId = Guid.NewGuid(),
+        Status = ProcessJobStatus.Completed // Invalid source state
+    };
+    await _dbContext.ProcessJobs.AddAsync(job);
+    await _dbContext.SaveChangesAsync();
+
+    // Act & Assert
+    var exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+        () => _service.RequestManualReviewAsync(job.JobId, "reason"));
+
+    Assert.Equal(job.JobId, exception.JobId);
+    Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+    Assert.Equal(ProcessJobStatus.ManualReview, exception.AttemptedStatus);
+
+    // Verify warning logged
+    _logger.VerifyWasCalled(LogLevel.Warning, "Invalid state transition");
+}
+```
+
+### Testing State Validators
+
+Test the centralized state transition validator:
+
+```csharp
+[Theory]
+[InlineData(ProcessJobStatus.Processing, ProcessJobStatus.ManualReview, true)]
+[InlineData(ProcessJobStatus.ManualReview, ProcessJobStatus.Processing, true)]
+[InlineData(ProcessJobStatus.ManualReview, ProcessJobStatus.Failed, true)]
+[InlineData(ProcessJobStatus.Pending, ProcessJobStatus.ManualReview, false)]
+[InlineData(ProcessJobStatus.Completed, ProcessJobStatus.ManualReview, false)]
+public void IsValidTransition_ManualReviewTransitions_ReturnsExpected(
+    ProcessJobStatus from,
+    ProcessJobStatus to,
+    bool expectedValid)
+{
+    // Act
+    var isValid = ProcessJobStatusTransitions.IsValidTransition(from, to);
+
+    // Assert
+    Assert.Equal(expectedValid, isValid);
+}
+```
+
+### Key Testing Patterns
+
+1. **Test State Transitions**: Verify status changes correctly
+2. **Test Field Updates**: Check CompletedAtUtc, LastErrorCode, LastErrorMessage, Attempts
+3. **Test Logging**: Use `FakeLogger<T>` to verify appropriate log levels
+4. **Test Exceptions**: Verify invalid transitions throw `InvalidStateTransitionException`
+5. **Test Not Found**: Verify `JobNotFoundException` when job doesn't exist
+
+### Examples
+
+See comprehensive test examples in:
+- **ManualReview Service Tests**: `Infrastructure.Tests/Services/ProcessJobServiceTests.cs` (lines 600-900)
+  - RequestManualReviewAsync: 9 tests
+  - ResumeFromManualReviewAsync: 9 tests
+  - RejectManualReviewAsync: 9 tests
+- **State Validator Tests**: `Infrastructure.Tests/Validation/ProcessJobStatusTransitionsTests.cs` (19 tests)
+
 ## Examples
 
 See comprehensive examples in:

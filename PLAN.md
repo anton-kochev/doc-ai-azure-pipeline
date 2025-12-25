@@ -5,6 +5,7 @@
 **Overall Progress:** ~50% Complete
 
 ### ✅ Completed (6/20)
+
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
 - ProcessJob model & queueing (idempotency, Service Bus)
@@ -14,6 +15,7 @@
 - Testing & quality (comprehensive test projects with 97+ tests, FakeLogger/TimeProvider)
 
 ### 🟡 In Progress (8/20)
+
 - OCR/layout extraction (executor exists, OCR pipeline structure added, needs Azure Document Intelligence integration)
 - Pre-processing & normalization (executor exists, needs core logic)
 - Embeddings pipeline (executor exists, needs Azure OpenAI integration)
@@ -22,9 +24,10 @@
 - Persistence & outbox (database exists, needs extraction results schema & outbox)
 - Human-in-the-loop UI (upload UI exists, needs review components)
 - Security, PII & compliance (Managed Identity done, needs Key Vault & PII redaction)
-- Runbook, docs & demo (CLAUDE.md exists, ServiceBusQueueInspector blog post complete, needs operational runbook)
+- Runbook, docs & demo (CLAUDE.md exists, needs operational runbook)
 
 ### ❌ Not Started (6/20)
+
 - Chunking strategy (semantic-aware chunker with metadata)
 - RAG retrieval layer (vector search API)
 - Cost controls & model-mix (cost tracking, model selection)
@@ -174,7 +177,7 @@
 
 - ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: COMPLETED** - Comprehensive test infrastructure with 4 test projects (DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, ServiceBusQueueInspector.Tests). 97+ unit tests for ProcessJobService covering idempotency (8 tests), GetOrCreateJob (13 tests), state transitions (StartProcessing: 10 tests, CompleteJob: 6 tests, FailJob: 9 tests). DocProcessing.TestUtilities provides FakeLogger, FakeTimeProvider for deterministic testing. All tests verify structured logging calls. Standardized test logging across all projects (commit 69cecaf). CI runs all tests on push. Golden dataset regression tests and E2E test harness remain as future enhancements.
+- **Status: COMPLETED** - Comprehensive test infrastructure with 3 test projects (DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests). 97+ unit tests for ProcessJobService covering idempotency (8 tests), GetOrCreateJob (13 tests), state transitions (StartProcessing: 10 tests, CompleteJob: 6 tests, FailJob: 9 tests). DocProcessing.TestUtilities provides FakeLogger, FakeTimeProvider for deterministic testing. All tests verify structured logging calls. Standardized test logging across all projects (commit 69cecaf). CI runs all tests on push. Golden dataset regression tests and E2E test harness remain as future enhancements.
 
 ## ModelOps & dataset improvements
 
@@ -190,7 +193,7 @@
 
 - Acceptance: team member can run demo and follow runbook to recover common failures.
 
-- **Status: IN PROGRESS** - Comprehensive CLAUDE.md exists with architecture, commands, workflows, TDD requirements, and development setup. README.md standardized with docproc paths and clarified local development instructions (commit 6385568). ServiceBusQueueInspector blog post complete demonstrating tool usage and local development workflow. ServiceBusQueueInspector tool fully tested with 12 comprehensive tests. Need to add: operational runbook for failure recovery, DLQ recovery procedures (can reference ServiceBusQueueInspector tool), demo script with sample PDFs, and troubleshooting guide.
+- **Status: IN PROGRESS** - Comprehensive CLAUDE.md exists with architecture, commands, workflows, TDD requirements, and development setup. README.md standardized with docproc paths and clarified local development instructions (commit 6385568). Need to add: operational runbook for failure recovery, DLQ recovery procedures, demo script with sample PDFs, and troubleshooting guide.
 
 ---
 
@@ -215,7 +218,6 @@
   - CompleteJob transitions (6 tests)
   - FailJob transitions (9 tests)
   - BlobStorageService functionality
-  - ServiceBusQueueInspector operations (12 tests)
 
 - **Test Utilities** (DocProcessing.TestUtilities):
   - FakeLogger for verifying structured logging
@@ -227,21 +229,24 @@
 See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracking:
 
 **Resolved:**
+
 - ✅ Concurrency race conditions with optimistic locking
 - ✅ CancellationToken support throughout async operations
 - ✅ Structured logging with LoggerMessage source generators
 
+**Resolved:**
+
+- ✅ Concurrency race conditions with optimistic locking
+- ✅ CancellationToken support throughout async operations
+- ✅ Structured logging with LoggerMessage source generators
+- ✅ ManualReview state machine (completed) - 3 service methods, 3 activity functions, external event handling, 46 tests
+
 **Pending Priority Work:**
+
 1. **Critical**: Exception-based error handling to replace boolean returns (3-4 hours)
-2. **High**: ManualReview state machine implementation with proper transitions (6-8 hours)
-3. **Medium**: Repository pattern for separation of concerns (8-10 hours)
+2. **Medium**: Repository pattern for separation of concerns (8-10 hours)
 
 ### Documentation & Tooling
-
-- **ServiceBusQueueInspector**: Complete CLI tool with blog post (ServiceBusQueueInspector-BlogPost.md) demonstrating:
-  - Local Service Bus development with Docker
-  - Queue inspection (peek, delete, send)
-  - Integration with local development workflow
 
 - **CLAUDE.md**: Comprehensive project guide including:
   - Build and run commands for all components

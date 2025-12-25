@@ -2,7 +2,7 @@ using DocProcessing.Application.Interfaces;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace DocProcessing.Orchestrator.Pipeline;
+namespace DocProcessing.Orchestrator.Functions.Pipeline;
 
 /// <summary>
 /// Request to fail a job with error details.

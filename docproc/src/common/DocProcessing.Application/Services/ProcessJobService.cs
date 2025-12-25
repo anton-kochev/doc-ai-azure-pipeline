@@ -4,6 +4,8 @@ using System.Text;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Domain.Entities;
 using DocProcessing.Domain.Exceptions;
+using DocProcessing.Domain.Extensions;
+using DocProcessing.Domain.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocProcessing.Application.Services;
@@ -157,11 +159,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             jobId,
             job =>
             {
-                if (job.Status != ProcessJobStatus.Pending)
-                {
-                    LogCannotStartProcessingNotPending(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Processing);
-                }
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.Processing);
                 job.Status = ProcessJobStatus.Processing;
                 job.StartedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
                 job.Attempts++;
@@ -187,11 +185,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             jobId,
             job =>
             {
-                if (job.Status != ProcessJobStatus.Processing)
-                {
-                    LogCannotCompleteNotProcessing(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Completed);
-                }
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.Completed);
                 job.Status = ProcessJobStatus.Completed;
                 job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
             },
@@ -218,11 +212,7 @@ public sealed partial class ProcessJobService : IProcessJobService
             jobId,
             job =>
             {
-                if (job.Status != ProcessJobStatus.Processing)
-                {
-                    LogCannotFailNotProcessing(job.CorrelationId, jobId, job.Status);
-                    throw new InvalidStateTransitionException(job.JobId, job.Status, ProcessJobStatus.Failed);
-                }
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.Failed);
                 job.Status = ProcessJobStatus.Failed;
                 job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
                 job.LastErrorCode = errorCode;
@@ -232,6 +222,91 @@ public sealed partial class ProcessJobService : IProcessJobService
             cancellationToken);
 
         LogJobFailed(updatedJob.CorrelationId, jobId, errorCode, errorMessage);
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in Processing status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
+    public async Task RequestManualReviewAsync(
+        Guid jobId,
+        string? reviewReason = null,
+        CancellationToken cancellationToken = default)
+    {
+        ProcessJob updatedJob = await TryUpdateJobAsync(
+            jobId,
+            job =>
+            {
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.ManualReview);
+                job.Status = ProcessJobStatus.ManualReview;
+                job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                job.LastErrorCode = "MANUAL_REVIEW_REQUIRED";
+                job.LastErrorMessage = reviewReason ?? "Manual review required";
+            },
+            "RequestManualReview",
+            cancellationToken);
+
+        LogJobTransitionedToManualReview(updatedJob.CorrelationId, updatedJob.JobId, reviewReason);
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in ManualReview status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
+    public async Task ResumeFromManualReviewAsync(
+        Guid jobId,
+        CancellationToken cancellationToken = default)
+    {
+        ProcessJob updatedJob = await TryUpdateJobAsync(
+            jobId,
+            job =>
+            {
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.Processing);
+                job.Status = ProcessJobStatus.Processing;
+                job.CompletedAtUtc = null;
+                job.LastErrorCode = null;
+                job.LastErrorMessage = null;
+                job.Attempts++;
+            },
+            "ResumeFromManualReview",
+            cancellationToken);
+
+        LogJobResumedFromManualReview(updatedJob.CorrelationId, updatedJob.JobId, updatedJob.Attempts);
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the job is not in ManualReview status or after maximum retry attempts due to concurrency conflicts.
+    /// </exception>
+    /// <exception cref="Microsoft.EntityFrameworkCore.DbUpdateException">
+    /// Thrown when the database update operation fails.
+    /// </exception>
+    public async Task RejectManualReviewAsync(
+        Guid jobId,
+        string? errorCode = null,
+        string? errorMessage = null,
+        CancellationToken cancellationToken = default)
+    {
+        ProcessJob updatedJob = await TryUpdateJobAsync(
+            jobId,
+            job =>
+            {
+                job.ThrowIfInvalidTransitionTo(ProcessJobStatus.Failed);
+                job.Status = ProcessJobStatus.Failed;
+                job.CompletedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                job.LastErrorCode = errorCode ?? "MANUAL_REVIEW_REJECTED";
+                job.LastErrorMessage = errorMessage ?? "Manually rejected during review";
+            },
+            "RejectManualReview",
+            cancellationToken);
+
+        LogJobRejectedFromManualReview(updatedJob.CorrelationId, jobId, errorCode, errorMessage);
     }
 
     private async Task<ProcessJob> TryUpdateJobAsync(
@@ -263,11 +338,6 @@ public sealed partial class ProcessJobService : IProcessJobService
                 _dbContext.Entry(job).State = EntityState.Detached;
 
                 return job;
-            }
-            catch (InvalidStateTransitionException)
-            {
-                // Rethrow domain exceptions immediately - these are not retryable
-                throw;
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -396,4 +466,40 @@ public sealed partial class ProcessJobService : IProcessJobService
         Level = LogLevel.Information,
         Message = "{Action}: Operation cancelled during retry. JobId={JobId}, Attempt={Attempt}")]
     private partial void LogOperationCancelledDuringRetry(string action, Guid jobId, int attempt);
+
+    [LoggerMessage(
+        EventId = 17,
+        Level = LogLevel.Warning,
+        Message = "Cannot request manual review: Job is not in Processing status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotRequestManualReviewNotProcessing(string correlationId, Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 18,
+        Level = LogLevel.Information,
+        Message = "Job transitioned to ManualReview. CorrelationId: {CorrelationId}, JobId={JobId}, Reason={Reason}")]
+    private partial void LogJobTransitionedToManualReview(string correlationId, Guid jobId, string? reason);
+
+    [LoggerMessage(
+        EventId = 19,
+        Level = LogLevel.Warning,
+        Message = "Cannot resume: Job is not in ManualReview status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotResumeNotInManualReview(string correlationId, Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 20,
+        Level = LogLevel.Information,
+        Message = "Job resumed from ManualReview. CorrelationId: {CorrelationId}, JobId={JobId}, Attempts={Attempts}")]
+    private partial void LogJobResumedFromManualReview(string correlationId, Guid jobId, int attempts);
+
+    [LoggerMessage(
+        EventId = 21,
+        Level = LogLevel.Warning,
+        Message = "Cannot reject: Job is not in ManualReview status. CorrelationId: {CorrelationId}, JobId={JobId}, CurrentStatus={Status}")]
+    private partial void LogCannotRejectNotInManualReview(string correlationId, Guid jobId, ProcessJobStatus status);
+
+    [LoggerMessage(
+        EventId = 24,
+        Level = LogLevel.Error,
+        Message = "Job rejected from ManualReview. CorrelationId: {CorrelationId}, JobId={JobId}, ErrorCode={ErrorCode}, ErrorMessage={ErrorMessage}")]
+    private partial void LogJobRejectedFromManualReview(string correlationId, Guid jobId, string? errorCode, string? errorMessage);
 }

@@ -17,8 +17,6 @@ This project implements a microservices architecture for document AI processing 
   - **DocProcessing.Domain** - Entity Framework Core domain models (Document, ProcessJob, ProfileCatalog)
   - **DocProcessing.Application** - Application services (DocumentService, ProcessJobService), pipeline stage contracts, message contracts (ProcessDocumentMessage), and business logic
   - **DocProcessing.Infrastructure** - Infrastructure implementations for storage (BlobStorageService), messaging (ServiceBusService), and database (ApplicationDbContext)
-- **Tools**
-  - **ServiceBusQueueInspector** (`docproc/ServiceBusQueueInspector/`) - CLI tool for inspecting and monitoring Azure Service Bus queues
 
 ### Key Features
 
@@ -35,7 +33,6 @@ This project implements a microservices architecture for document AI processing 
 - **Material Design UI** - Modern Angular application with light/dark mode support
 - **Local Development** - Full emulator support (Azurite, Service Bus)
 - **CI/CD Pipeline** - Automated deployment via GitHub Actions
-- **Monitoring Tools** - ServiceBusQueueInspector CLI for queue inspection
 
 ### How It Works
 
@@ -87,6 +84,7 @@ docker-compose up -d
 ```
 
 This starts:
+
 - **Azurite** - Azure Storage emulator (Blob, Queue, Table services)
   - Blob service: `http://localhost:10000`
   - Queue service: `http://localhost:10001`
@@ -172,6 +170,7 @@ dotnet watch --project src/api/DocProcessing.Api.csproj
 ```
 
 The API will be available at:
+
 - HTTP: `http://localhost:7071`
 - API endpoints: `http://localhost:7071/api/*`
 
@@ -233,8 +232,6 @@ doc-ai-azure-pipeline/               # Repository root
 │   │   ├── DocProcessing.Api.Tests/ # Unit tests for API
 │   │   ├── DocProcessing.Application.Tests/ # Unit tests for Application layer
 │   │   └── Infrastructure.Tests/    # Unit tests for Infrastructure layer
-│   ├── ServiceBusQueueInspector/    # CLI tool for Service Bus queue inspection
-│   ├── ServiceBusQueueInspector.Tests/ # Tests for the inspector tool
 │   ├── docs/                        # Documentation
 │   ├── infra/                       # Infrastructure as Code
 │   ├── knowledge-base/              # Project knowledge base (v1.1.0)
@@ -258,8 +255,7 @@ doc-ai-azure-pipeline/               # Repository root
 ├── config.json                      # Service Bus emulator configuration
 ├── docker-compose.yml               # Local development emulators (Azurite, Service Bus)
 ├── CLAUDE.md                        # Claude Code AI agent instructions
-├── README.md                        # This file
-└── ServiceBusQueueInspector-BlogPost.md # Blog post about the inspector tool
+└── README.md                        # This file
 ```
 
 ## Development
@@ -285,9 +281,6 @@ dotnet test
 
 # Run specific test project
 dotnet test tests/DocProcessing.Api.Tests/DocProcessing.Api.Tests.csproj
-
-# Run ServiceBusQueueInspector tool
-dotnet run --project ServiceBusQueueInspector/ServiceBusQueueInspector.csproj
 ```
 
 ### Client Development
@@ -345,6 +338,7 @@ The API is built with Azure Functions and provides the following endpoints:
     - `tenantId` (optional) - GUID for multi-tenant scenarios
   - **Validation**: File type, size, and SHA256 hash calculation
   - **Response** (202 Accepted):
+
     ```json
     {
       "jobId": "guid",
@@ -364,17 +358,20 @@ The API is built with Azure Functions and provides the following endpoints:
 - `POST /api/jobs/{jobId}/retry` - Retry a failed job
   - **Path parameter**: `jobId` (GUID)
   - **Response** (200 OK):
+
     ```json
     {
       "message": "Job re-queued for retry",
       "jobId": "guid"
     }
     ```
+
   - **Error responses**:
     - 400 Bad Request - Invalid job ID format
     - 404 Not Found - Job not found or not in Failed status
 
 The API integrates with:
+
 - **Azure Blob Storage** - Document storage with Managed Identity authentication
 - **Azure Service Bus** - Asynchronous message processing with Managed Identity
 - **SQL Server** - Metadata persistence via Entity Framework Core with automatic migrations
@@ -383,6 +380,7 @@ The API integrates with:
 ## Technology Stack
 
 ### Backend
+
 - **.NET 8.0** - Target framework for all services
 - **Azure Functions v4** - Serverless compute platform for API and orchestration
 - **Azure Durable Functions** - Stateful orchestration workflows
@@ -392,6 +390,7 @@ The API integrates with:
 - **Azure Identity** - Authentication and authorization
 
 ### Frontend
+
 - Angular 20.3
 - Angular Material 20.2.7
 - RxJS 7.8
@@ -400,6 +399,7 @@ The API integrates with:
 - ESLint & Prettier (code quality)
 
 ### Architecture & Patterns
+
 - **Clean Architecture** - Separation of concerns with Domain, Application, and Infrastructure layers
 - **Domain-Driven Design** - Domain entities with EF Core for persistence
 - **Pipeline Pattern** - Standardized stage contracts (IJobStageActivity) for document processing workflow
@@ -409,6 +409,7 @@ The API integrates with:
 - **Managed Identity** - Secure Azure service authentication without connection strings
 
 ### Infrastructure
+
 - **Docker** (Linux containers)
 - **Azure Blob Storage** - Document storage
 - **Azure Service Bus** - Message queue for document processing
@@ -451,6 +452,7 @@ The API uses Azure Functions configuration with Managed Identity support. Key se
 ```
 
 **Key Configuration Sections:**
+
 - **AzureStorage** - Blob storage with Managed Identity (or ConnectionString for local dev)
 - **ServiceBus** - Message queue with Managed Identity (or ConnectionString for local dev)
 - **FileUpload** - File validation settings (max size, allowed types)
@@ -476,6 +478,7 @@ dotnet ef migrations remove
 ### Angular Configuration
 
 The Angular app is configured with:
+
 - SCSS for styling
 - Material Design theming (light/dark modes)
 - Prettier with 100-character line width
@@ -494,6 +497,7 @@ This project includes a comprehensive knowledge base (v1.1.0) for code style gui
 ### Included Content
 
 #### Code Style Guides
+
 - **.NET/C#**
 - **Angular**
 - **TypeScript**
@@ -572,6 +576,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 ## Recent Updates
 
 ### Latest (October 2025)
+
 - ✅ **Infrastructure Layer** - Refactored to shared Infrastructure layer with BlobStorageService and ServiceBusService
 - ✅ **Managed Identity** - Added Managed Identity support for Azure Storage and Service Bus authentication
 - ✅ **Retry Mechanism** - Implemented RetryJob API endpoint for failed job recovery
@@ -581,12 +586,12 @@ The project uses GitHub Actions for continuous integration and deployment:
 - ✅ **Database Migrations** - Automatic EF Core migrations with configurable auto-apply
 
 ### Previous Updates
+
 - ✅ **Clean Architecture** - Implemented Domain, Contracts, Application, and Infrastructure layers
 - ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions (.NET 8 isolated)
 - ✅ **Azure Durable Functions** - Added orchestration worker (DocProcessing.Orchestrator)
 - ✅ **Entity Framework Core 9.0** - SQL Server integration with migrations
 - ✅ **CI/CD Pipelines** - GitHub Actions workflows for automated deployment
-- ✅ **ServiceBusQueueInspector** - CLI tool for queue monitoring
 - ✅ **Unit Tests** - Test coverage for API services
 - ✅ **Local Development** - Azure Service Bus emulator and Azurite integration
 - ✅ **Knowledge Base** - Comprehensive .NET/C# code style guides (v1.1.0)

@@ -75,4 +75,37 @@ public interface IProcessJobService
     /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Processing status.</exception>
     /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
     Task FailJobAsync(Guid jobId, string? errorCode = null, string? errorMessage = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Transitions a job from Processing to ManualReview status.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to mark for manual review.</param>
+    /// <param name="reviewReason">Optional reason describing why manual review is needed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in Processing status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
+    Task RequestManualReviewAsync(Guid jobId, string? reviewReason = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Transitions a job from ManualReview to Processing status to reprocess after manual intervention.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to resume processing.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in ManualReview status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
+    Task ResumeFromManualReviewAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Transitions a job from ManualReview to Failed status after manual rejection.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to mark as manually rejected.</param>
+    /// <param name="errorCode">Optional error code describing the rejection reason.</param>
+    /// <param name="errorMessage">Optional error message describing the rejection reason.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="DocProcessing.Domain.Exceptions.JobNotFoundException">Thrown when the job with the specified ID does not exist.</exception>
+    /// <exception cref="DocProcessing.Domain.Exceptions.InvalidStateTransitionException">Thrown when the job is not in ManualReview status.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when unable to update the job due to concurrency conflicts after retries.</exception>
+    Task RejectManualReviewAsync(Guid jobId, string? errorCode = null, string? errorMessage = null, CancellationToken cancellationToken = default);
 }

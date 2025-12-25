@@ -205,6 +205,50 @@ ng generate service service-name
 ng generate --help
 ```
 
+## Planned Features
+
+The following features are planned for future releases:
+
+### ManualReview Interface (Human-in-the-Loop)
+
+A review UI for documents requiring manual intervention:
+
+- **Review Dashboard** - List of jobs in ManualReview status
+- **Document Viewer** - PDF preview with OCR results overlay
+- **Extraction Editor** - Edit extracted fields with validation
+- **Decision Actions**:
+  - **Resume** - Continue processing from next stage
+  - **Reject** - Mark document as failed with reason
+- **Audit Trail** - View job history and previous review decisions
+
+**Status**: Planned (Backend ManualReview workflow ✅ implemented, UI pending)
+
+**API Integration**:
+
+```typescript
+// Get jobs in manual review
+GET /api/jobs?status=ManualReview
+
+// Get job details with extraction results
+GET /api/jobs/{jobId}
+
+// Send review decision
+POST /api/jobs/{jobId}/review
+{
+  "decision": "RESUME" | "REJECT",
+  "reason": "optional explanation"
+}
+```
+
+This will integrate with the existing ManualReview state machine in the orchestrator, which currently supports external event handling via the Durable Functions HTTP API.
+
+### Job Status Tracking
+
+- **Job List** - View all submitted jobs with current status
+- **Status Updates** - Real-time updates via SignalR or polling
+- **Job Details** - View processing stage, timestamps, and errors
+- **Retry Failed Jobs** - Resubmit jobs that failed processing
+
 ## Additional Resources
 
 - [Angular Documentation](https://angular.dev)

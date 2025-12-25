@@ -2,33 +2,33 @@ using DocProcessing.Application.Interfaces;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace DocProcessing.Orchestrator.Pipeline;
+namespace DocProcessing.Orchestrator.Functions.Pipeline;
 
 /// <summary>
-/// Activity to transition a job from Pending to Processing status.
+/// Activity to transition a job to Completed status.
 /// </summary>
-public sealed class StartJob
+public sealed class CompleteJob
 {
     private readonly IProcessJobService _jobService;
-    private readonly ILogger<StartJob> _logger;
+    private readonly ILogger<CompleteJob> _logger;
 
-    public StartJob(
+    public CompleteJob(
         IProcessJobService jobService,
-        ILogger<StartJob> logger)
+        ILogger<CompleteJob> logger)
     {
         _jobService = jobService ?? throw new ArgumentNullException(nameof(jobService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    [Function(nameof(StartJob))]
+    [Function(nameof(CompleteJob))]
     public async Task RunAsync(
         [ActivityTrigger] Guid jobId,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting job {JobId}", jobId);
+        _logger.LogInformation("Completing job {JobId}", jobId);
 
-        await _jobService.StartProcessingAsync(jobId, cancellationToken);
+        await _jobService.CompleteJobAsync(jobId, cancellationToken);
 
-        _logger.LogInformation("Successfully started job {JobId}", jobId);
+        _logger.LogInformation("Successfully completed job {JobId}", jobId);
     }
 }

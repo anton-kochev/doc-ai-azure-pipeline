@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using DocProcessing.Application.Models;
 using DocProcessing.Domain.Entities;
 using DocProcessing.Orchestrator.Functions.Executors;
-using DocProcessing.Orchestrator.Pipeline;
+using DocProcessing.Orchestrator.Functions.Pipeline;
 
 namespace DocProcessing.Orchestrator.Functions;
 
@@ -109,16 +109,98 @@ public class DocumentProcessingOrchestrator
                         result.ErrorCode,
                         result.ErrorMessage);
 
-                    // Fail the job
-                    await context.CallActivityAsync(
-                        nameof(FailJob),
-                        new FailJobRequest(
+                    // Check if manual review is required
+                    if (result.ErrorCode == "MANUAL_REVIEW_REQUIRED")
+                    {
+                        logger.LogWarning(
+                            "Manual review required for JobId: {JobId} at stage {Stage}. Reason: {ErrorMessage}",
                             jobId,
-                            result.ErrorCode ?? "STAGE_FAILURE",
-                            result.ErrorMessage ?? $"Stage {stage} failed"));
+                            stage,
+                            result.ErrorMessage);
 
-                    throw new InvalidOperationException(
-                        $"Stage {stage} failed with error: {result.ErrorCode} - {result.ErrorMessage}");
+                        // Request manual review (Processing → ManualReview)
+                        await context.CallActivityAsync(
+                            nameof(RequestManualReview),
+                            new RequestManualReviewInput(jobId, result.ErrorMessage));
+
+                        // Wait for external event with decision
+                        logger.LogInformation(
+                            "Waiting for manual review decision for JobId: {JobId}",
+                            jobId);
+
+                        string decision = await context.WaitForExternalEvent<string>("ManualReviewDecision");
+
+                        logger.LogInformation(
+                            "Received manual review decision '{Decision}' for JobId: {JobId}",
+                            decision,
+                            jobId);
+
+                        // Handle decision (RESUME or REJECT only)
+                        switch (decision?.ToUpperInvariant())
+                        {
+                            case "RESUME":
+                                // Resume processing - continue to NEXT stage after manual review
+                                logger.LogInformation(
+                                    "Manual review resolved for JobId: {JobId}. Continuing to next stage after {Stage}.",
+                                    jobId,
+                                    stage);
+
+                                await context.CallActivityAsync(nameof(ResumeFromManualReview), jobId);
+
+                                logger.LogInformation(
+                                    "Job {JobId} resumed from manual review. Continuing with next stage.",
+                                    jobId);
+
+                                // Continue with next stage in the loop
+                                break;
+
+                            case "REJECT":
+                                // Manually rejected - fail the job
+                                logger.LogWarning(
+                                    "Manual review rejected for JobId: {JobId}. Failing job.",
+                                    jobId);
+
+                                await context.CallActivityAsync(
+                                    nameof(RejectManualReview),
+                                    new RejectManualReviewInput(
+                                        jobId,
+                                        "MANUAL_REVIEW_REJECTED",
+                                        "Manually rejected during review"));
+
+                                throw new InvalidOperationException(
+                                    $"Job {jobId} manually rejected during review at stage {stage}");
+
+                            default:
+                                // Unknown decision - log error and fail
+                                logger.LogError(
+                                    "Unknown manual review decision '{Decision}' for JobId: {JobId}. Valid values: RESUME, REJECT.",
+                                    decision,
+                                    jobId);
+
+                                await context.CallActivityAsync(
+                                    nameof(FailJob),
+                                    new FailJobRequest(
+                                        jobId,
+                                        "INVALID_MANUAL_REVIEW_DECISION",
+                                        $"Invalid manual review decision: {decision}. Valid values: RESUME, REJECT."));
+
+                                throw new InvalidOperationException(
+                                    $"Invalid manual review decision '{decision}' for JobId {jobId}. Valid values: RESUME, REJECT.");
+                        }
+                    }
+                    else
+                    {
+                        // Normal failure (not manual review) - fail the job
+                        await context.CallActivityAsync(
+                            nameof(FailJob),
+                            new FailJobRequest(
+                                jobId,
+                                result.ErrorCode ?? "STAGE_FAILURE",
+                                result.ErrorMessage ?? $"Stage {stage} failed"));
+
+                        throw new InvalidOperationException(
+                            $"Stage {stage} failed with error: {result.ErrorCode} - {result.ErrorMessage}");
+                    }
                 }
 
                 logger.LogInformation(

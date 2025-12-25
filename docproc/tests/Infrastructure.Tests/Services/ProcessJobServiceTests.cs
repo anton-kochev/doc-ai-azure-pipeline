@@ -1208,4 +1208,501 @@ public class ProcessJobServiceTests : IDisposable
     }
 
     #endregion
+
+    #region RequestManualReviewAsync Tests
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsProcessing_TransitionsToManualReview()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        // Act
+        await _service.RequestManualReviewAsync(jobId, "Low confidence score");
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(ProcessJobStatus.ManualReview, job.Status);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsProcessing_SetsCompletedAtUtc()
+    {
+        // Arrange
+        DateTimeOffset startTime = new(2024, 1, 15, 10, 30, 0, TimeSpan.Zero);
+        _timeProvider.SetUtcNow(startTime);
+
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        _timeProvider.Advance(TimeSpan.FromMinutes(5));
+
+        // Act
+        await _service.RequestManualReviewAsync(jobId, "Data validation failed");
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, job.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsProcessing_SetsReviewReason()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        const string reviewReason = "Suspicious document format";
+
+        // Act
+        await _service.RequestManualReviewAsync(jobId, reviewReason);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal("MANUAL_REVIEW_REQUIRED", job.LastErrorCode);
+        Assert.Equal(reviewReason, job.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WithoutReason_SetsDefaultReviewReason()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        // Act
+        await _service.RequestManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal("MANUAL_REVIEW_REQUIRED", job.LastErrorCode);
+        Assert.Equal("Manual review required", job.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobNotFound_ThrowsJobNotFoundException()
+    {
+        // Arrange
+        Guid nonExistentJobId = Guid.NewGuid();
+
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.RequestManualReviewAsync(nonExistentJobId));
+
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsPending_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RequestManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Pending, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.ManualReview, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsCompleted_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.CompleteJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RequestManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.ManualReview, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsFailed_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.FailJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RequestManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.ManualReview, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RequestManualReviewAsync_WhenJobIsManualReview_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "First review");
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RequestManualReviewAsync(jobId, "Second review"));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.ManualReview, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.ManualReview, exception.AttemptedStatus);
+    }
+
+    #endregion
+
+    #region ResumeFromManualReviewAsync Tests
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsManualReview_TransitionsToProcessing()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        // Act
+        await _service.ResumeFromManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(ProcessJobStatus.Processing, job.Status);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsManualReview_ClearsCompletedAtUtc()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        ProcessJob? reviewJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(reviewJob);
+        Assert.NotNull(reviewJob.CompletedAtUtc);
+
+        // Act
+        await _service.ResumeFromManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Null(job.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsManualReview_ClearsErrorInformation()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Low confidence");
+
+        ProcessJob? reviewJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(reviewJob);
+        Assert.Equal("MANUAL_REVIEW_REQUIRED", reviewJob.LastErrorCode);
+        Assert.Equal("Low confidence", reviewJob.LastErrorMessage);
+
+        // Act
+        await _service.ResumeFromManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Null(job.LastErrorCode);
+        Assert.Null(job.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsManualReview_IncrementsAttempts()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        ProcessJob? processingJob = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(processingJob);
+        int attemptsBefore = processingJob.Attempts;
+
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        // Act
+        await _service.ResumeFromManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(attemptsBefore + 1, job.Attempts);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobNotFound_ThrowsJobNotFoundException()
+    {
+        // Arrange
+        Guid nonExistentJobId = Guid.NewGuid();
+
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.ResumeFromManualReviewAsync(nonExistentJobId));
+
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsProcessing_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.ResumeFromManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Processing, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsCompleted_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.CompleteJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.ResumeFromManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task ResumeFromManualReviewAsync_WhenJobIsFailed_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.FailJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.ResumeFromManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Processing, exception.AttemptedStatus);
+    }
+
+    #endregion
+
+    #region RejectManualReviewAsync Tests
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsManualReview_TransitionsToFailed()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        // Act
+        await _service.RejectManualReviewAsync(jobId, "INVALID_DOCUMENT", "Document is invalid");
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(ProcessJobStatus.Failed, job.Status);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsManualReview_SetsCompletedAtUtc()
+    {
+        // Arrange
+        DateTimeOffset startTime = new(2024, 1, 15, 10, 30, 0, TimeSpan.Zero);
+        _timeProvider.SetUtcNow(startTime);
+
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        _timeProvider.Advance(TimeSpan.FromHours(1));
+
+        // Act
+        await _service.RejectManualReviewAsync(jobId, "REJECTED", "Manual rejection");
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, job.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsManualReview_SetsErrorInformation()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        const string errorCode = "INVALID_FORMAT";
+        const string errorMessage = "Document format is not supported";
+
+        // Act
+        await _service.RejectManualReviewAsync(jobId, errorCode, errorMessage);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal(errorCode, job.LastErrorCode);
+        Assert.Equal(errorMessage, job.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WithoutErrorInfo_SetsDefaultErrorFields()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.RequestManualReviewAsync(jobId, "Needs review");
+
+        // Act
+        await _service.RejectManualReviewAsync(jobId);
+
+        // Assert
+        ProcessJob? job = await _dbContext.ProcessJobs.FindAsync(jobId);
+        Assert.NotNull(job);
+        Assert.Equal("MANUAL_REVIEW_REJECTED", job.LastErrorCode);
+        Assert.Equal("Manually rejected during review", job.LastErrorMessage);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobNotFound_ThrowsJobNotFoundException()
+    {
+        // Arrange
+        Guid nonExistentJobId = Guid.NewGuid();
+
+        // Act & Assert
+        JobNotFoundException exception = await Assert.ThrowsAsync<JobNotFoundException>(
+            () => _service.RejectManualReviewAsync(nonExistentJobId));
+
+        Assert.Equal(nonExistentJobId, exception.JobId);
+        Assert.Contains("not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsPending_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RejectManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Pending, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsCompleted_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.CompleteJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RejectManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Completed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
+    }
+
+    [Fact]
+    public async Task RejectManualReviewAsync_WhenJobIsFailed_ThrowsInvalidStateTransitionException()
+    {
+        // Arrange
+        Guid documentId = Guid.NewGuid();
+        byte[] sha256Hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        (Guid jobId, _) = await _service.GetOrCreateJobAsync(documentId, null, sha256Hash);
+        await _service.StartProcessingAsync(jobId);
+        await _service.FailJobAsync(jobId);
+
+        // Act & Assert
+        InvalidStateTransitionException exception = await Assert.ThrowsAsync<InvalidStateTransitionException>(
+            () => _service.RejectManualReviewAsync(jobId));
+
+        Assert.Equal(jobId, exception.JobId);
+        Assert.Equal(ProcessJobStatus.Failed, exception.CurrentStatus);
+        Assert.Equal(ProcessJobStatus.Failed, exception.AttemptedStatus);
+    }
+
+    #endregion
 }

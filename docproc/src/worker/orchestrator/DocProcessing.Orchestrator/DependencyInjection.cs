@@ -1,7 +1,7 @@
 using DocProcessing.Application.Pipeline;
 using DocProcessing.Orchestrator.Functions;
 using DocProcessing.Orchestrator.Functions.Executors;
-using DocProcessing.Orchestrator.Pipeline;
+using DocProcessing.Orchestrator.Functions.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DocProcessing.Orchestrator;
@@ -16,7 +16,12 @@ public static class DependencyInjection
         services.AddScoped<CompleteJob>();
         services.AddScoped<FailJob>();
         services.AddScoped<StartJob>();
-        
+
+        // Register ManualReview activities
+        services.AddScoped<RequestManualReview>();
+        services.AddScoped<ResumeFromManualReview>();
+        services.AddScoped<RejectManualReview>();
+
         // Register orchestrator functions
         services.AddScoped<EmbedStageExecutor>();
         services.AddScoped<ExtractStageExecutor>();
