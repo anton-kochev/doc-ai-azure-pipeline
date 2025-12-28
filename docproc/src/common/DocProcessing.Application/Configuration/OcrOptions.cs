@@ -29,4 +29,14 @@ public sealed class OcrOptions
     /// Model ID to use for document analysis (e.g., "prebuilt-layout", "prebuilt-document").
     /// </summary>
     public required string ModelId { get; init; } = "prebuilt-layout";
+
+    /// <summary>
+    /// Maximum number of retry attempts for transient failures.
+    /// </summary>
+    public int MaxRetries { get; init; } = 3;
+
+    /// <summary>
+    /// Initial delay in seconds before first retry attempt.
+    /// </summary>
+    public int RetryDelaySeconds { get; init; } = 2;
 }

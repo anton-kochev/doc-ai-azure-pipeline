@@ -1,8 +1,10 @@
 using DocProcessing.Application.Configuration;
 using DocProcessing.Application.Interfaces;
+using DocProcessing.Application.Services.OCR;
 using DocProcessing.Infrastructure.Factories;
 using DocProcessing.Infrastructure.MessageBroker;
 using DocProcessing.Infrastructure.MessageBroker.ServiceBus;
+using DocProcessing.Infrastructure.Services.OCR;
 using DocProcessing.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -34,11 +36,12 @@ public static class DependencyInjection
         services.Configure<AzureStorageOptions>(configuration.GetSection(AzureStorageOptions.SectionName));
         services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
         services.Configure<OcrOptions>(configuration.GetSection("Ocr"));
-        
+
         // Register services
         services.AddSingleton<IServiceBusSenderFactory, ServiceBusSenderFactory>();
         services.AddScoped<IMessagingService, ServiceBusService>();
         services.AddScoped<IStorageService, BlobStorageService>();
+        services.AddScoped<IOcrService, AzureDocumentIntelligenceOcrService>();
         
         // Register factories
         services.AddTransient<IPipelineActivityFactory, PipelineActivityFactory>();
