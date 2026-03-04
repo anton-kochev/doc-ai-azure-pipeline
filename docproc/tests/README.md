@@ -1,6 +1,65 @@
 # Testing Guide
 
-This guide covers testing practices for the DocProcessing solution, focusing on testing source-generated logging.
+This guide covers testing practices for the DocProcessing solution.
+
+## Table of Contents
+
+- [End-to-End Integration Tests](#end-to-end-integration-tests)
+- [Shared Test Utilities](#shared-test-utilities)
+- [Choosing the Right Logger for Tests](#choosing-the-right-logger-for-tests)
+- [Testing ManualReview State Transitions](#testing-manualreview-state-transitions)
+
+## End-to-End Integration Tests
+
+The `DocProcessing.EndToEnd.Tests` project verifies full document processing pipeline flows (Upload → OCR → Preprocess → ... → Completed) without requiring Azure infrastructure. It uses real Application services against an in-memory database, with mocked external Azure services (OCR, Service Bus).
+
+### Architecture
+
+**`EndToEndTestFixture`** — each test creates its own fixture instance for full isolation. Wires:
+- Real services: `DocumentService`, `ProcessJobService`, all `*StageActivity` classes, preprocessing services
+- Stateful fakes: `InMemoryStorageService` (ConcurrentDictionary-based), `InMemoryDbContext`, `FakeTimeProvider`
+- Mocks: `IOcrService`, `IMessagingService`
+
+**`PipelineSimulator`** — simulates the orchestrator's stage loop (OCR → Preprocess → Embed → Extract → Validate → Persist → Notify). Supports resume from a specific stage index for manual review flows.
+
+> **Documented divergence**: The simulator forwards stage output metadata between stages. Production currently rebuilds metadata fresh from the Document record per stage, which is a known bug tracked separately.
+
+**`ControllableActivityFactory`** — wraps `IPipelineActivityFactory`, delegates to real factory by default. Tests can override specific stages with mock activities to inject failures or manual review triggers.
+
+**`UploadRequestBuilder`** — fluent builder replicating the upload flow: compute SHA256 → upload to storage → get/create document → get/create job → enqueue if new.
+
+**`OcrResultBuilder`** — fluent builder for creating test `OcrResult` instances with configurable page count, confidence, and text content.
+
+### Test Classes (5 classes, 24 tests)
+
+| Class | Tests | Coverage |
+|---|---|---|
+| `HappyPathFlowTests` | 7 | Full pipeline success, OCR verification, metadata, timestamps, stage guard |
+| `StageFailureFlowTests` | 4 | OCR failures, missing metadata, unexpected errors |
+| `RetryFlowTests` | 3 | Retry resets, re-run succeeds with attempts=2, messaging |
+| `ManualReviewFlowTests` | 5 | Manual review trigger, resume, skip-earlier-stages, reject, wrong state |
+| `IdempotencyFlowTests` | 5 | Duplicate uploads, different tenants/profiles, terminal vs non-terminal |
+
+### Running
+
+```bash
+# Run E2E tests only (from docproc/)
+dotnet test --project tests/DocProcessing.EndToEnd.Tests/
+```
+
+### Known Limitations
+
+- **EF Core InMemory** does not enforce unique constraints — idempotency tests rely on query-first-then-insert pattern
+- **PipelineSimulator forwards metadata** (production doesn't yet) — explicitly documented divergence
+- **No cancellation token or concurrent upload tests** in v1 — deferred
+
+### Shared Test Utilities
+
+`DocProcessing.TestUtilities` provides shared helpers used across all test projects:
+- `Database/InMemoryDbContext` — EF Core in-memory database wrapper implementing `IApplicationDbContext` with `IDisposable` and `IAsyncDisposable`
+- `Logging/FakeLoggerExtensions` — `VerifyWasCalled` extension for asserting on source-generated log messages
+
+---
 
 ## Choosing the Right Logger for Tests
 
