@@ -13,19 +13,15 @@ public sealed class ValidateStageExecutor
 {
     private readonly ILogger<ValidateStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
-    private readonly TimeProvider _timeProvider;
 
     public ValidateStageExecutor(
         ILogger<ValidateStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory,
-        TimeProvider timeProvider)
+        IPipelineActivityFactory pipelineActivityFactory)
     {
         _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
-        _timeProvider =
-            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(ValidateStageExecutor))]
@@ -40,40 +36,15 @@ public sealed class ValidateStageExecutor
             context.Job.JobId,
             context.CorrelationId);
 
-        try
-        {
-            // TODO: Implement validation logic
-            // - Check required fields are present
-            // - Validate data formats (dates, numbers, etc.)
-            // - Apply business rules validation
-            // - Calculate confidence scores
-            // - Flag items requiring manual review
+        var result = await _pipelineActivityFactory
+            .Create(ProcessJobStage.Validate)
+            .ExecuteAsync(context, cancellationToken);
 
-            await _pipelineActivityFactory
-                .Create(ProcessJobStage.Validate)
-                .ExecuteAsync(context, cancellationToken);
+        _logger.LogInformation(
+            "Validate stage completed for JobId: {JobId}, Success: {IsSuccess}",
+            context.Job.JobId,
+            result.IsSuccess);
 
-            _logger.LogInformation(
-                "Validate stage completed successfully for JobId: {JobId}",
-                context.Job.JobId);
-
-            return StageResult.Success(
-                output: new { ValidationPassed = true },
-                metadata: new Dictionary<string, object>
-                {
-                    ["CompletedAt"] = _timeProvider.GetUtcNow()
-                });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Validate stage failed for JobId: {JobId}",
-                context.Job.JobId);
-
-            return StageResult.Failure(
-                errorCode: "VALIDATE_ERROR",
-                errorMessage: ex.Message);
-        }
+        return result;
     }
 }

@@ -13,19 +13,15 @@ public sealed class PersistStageExecutor
 {
     private readonly ILogger<PersistStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
-    private readonly TimeProvider _timeProvider;
 
     public PersistStageExecutor(
         ILogger<PersistStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory,
-        TimeProvider timeProvider)
+        IPipelineActivityFactory pipelineActivityFactory)
     {
         _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
-        _timeProvider =
-            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(PersistStageExecutor))]
@@ -40,39 +36,15 @@ public sealed class PersistStageExecutor
             context.Job.JobId,
             context.CorrelationId);
 
-        try
-        {
-            // TODO: Implement persistence logic
-            // - Save extracted data to application database
-            // - Update document metadata
-            // - Store raw and processed data references
-            // - Ensure transactional consistency
+        var result = await _pipelineActivityFactory
+            .Create(ProcessJobStage.Persist)
+            .ExecuteAsync(context, cancellationToken);
 
-            await _pipelineActivityFactory
-                .Create(ProcessJobStage.Persist)
-                .ExecuteAsync(context, cancellationToken);
+        _logger.LogInformation(
+            "Persist stage completed for JobId: {JobId}, Success: {IsSuccess}",
+            context.Job.JobId,
+            result.IsSuccess);
 
-            _logger.LogInformation(
-                "Persist stage completed successfully for JobId: {JobId}",
-                context.Job.JobId);
-
-            return StageResult.Success(
-                output: new { DataPersisted = true },
-                metadata: new Dictionary<string, object>
-                {
-                    ["CompletedAt"] = _timeProvider.GetUtcNow()
-                });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Persist stage failed for JobId: {JobId}",
-                context.Job.JobId);
-
-            return StageResult.Failure(
-                errorCode: "PERSIST_ERROR",
-                errorMessage: ex.Message);
-        }
+        return result;
     }
 }

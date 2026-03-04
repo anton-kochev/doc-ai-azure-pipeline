@@ -74,13 +74,13 @@
 
 - **Status: COMPLETED** (2025-12-28) - Full Azure Document Intelligence SDK integration implemented in `AzureDocumentIntelligenceOcrService` using Azure.AI.DocumentIntelligence v1.0.0. Features: Managed Identity authentication (DefaultAzureCredential), text extraction with coordinates and confidence scores, table detection with cell structures, form field (key-value) extraction, bounding box normalization (0.0-1.0 range), comprehensive error handling (OcrProcessingException), structured logging (EventIds 3001-3004), 32 unit tests (7 active validation tests passing), DI registration in Infrastructure layer, configuration in appsettings.json. Total test count: 149 tests (124 passing, 25 OCR implementation tests documented for integration testing).
 
-## Pre-processing & normalization
+## ~~Pre-processing & normalization~~ ✅
 
 - Tasks: text normalization (whitespace, ligatures, Unicode normalization), table → CSV/JSON for numeric fields, date/currency normalization rules, handle multi-column layouts via coordinates.
 
 - Acceptance: normalized text + structured table exports that preserve numeric formats.
 
-- **Status: IN PROGRESS** - PreprocessStageExecutor exists with activity infrastructure. Core normalization logic (whitespace, Unicode, date/currency parsing, table handling) needs implementation.
+- **Status: COMPLETED** (2026-03-04) - TextNormalizer (whitespace/NFC/ligatures), TableConverter (CSV/JSON with escaping), FieldParser (date/currency/number parsing) all implemented and tested. PreprocessStageExecutor bug fixed (was discarding activity result). 65+ characterization tests with documented BUG/QUIRK comments. Known issues: TableConverter column span bug, 4-symbol-only currency support, US-first date ambiguity.
 
 ## Chunking strategy
 
