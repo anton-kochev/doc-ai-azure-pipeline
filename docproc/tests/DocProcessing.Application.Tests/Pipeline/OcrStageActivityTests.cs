@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
-using Xunit;
 
 namespace DocProcessing.Application.Tests.Pipeline;
 
@@ -51,7 +50,7 @@ public sealed class OcrStageActivityTests
             _mockOptions.Object);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithValidPdf_ReturnsSuccessWithOcrResults()
     {
         // Arrange
@@ -103,14 +102,15 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Output);
-        var output = Assert.IsType<Dictionary<string, object>>(result.Output);
-        Assert.Contains("pageCount", output);
-        Assert.Contains("confidence", output);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(result.Output).IsNotNull();
+        await Assert.That(result.Output).IsTypeOf<Dictionary<string, object>>();
+        var output = (Dictionary<string, object>)result.Output!;
+        await Assert.That(output.Keys).Contains("pageCount");
+        await Assert.That(output.Keys).Contains("confidence");
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithValidPdf_StoresFullResultsInBlob()
     {
         // Arrange
@@ -139,7 +139,7 @@ public sealed class OcrStageActivityTests
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithValidPdf_StoresSummaryInDocumentMetadata()
     {
         // Arrange
@@ -170,7 +170,7 @@ public sealed class OcrStageActivityTests
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithInvalidDocument_ReturnsFailure()
     {
         // Arrange
@@ -188,12 +188,12 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.NotNull(result.ErrorCode);
-        Assert.Contains("not found", result.ErrorMessage ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsNotNull();
+        await Assert.That(result.ErrorMessage ?? string.Empty).Contains("not found", StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WhenBlobStorageFails_ReturnsFailureAndLogsError()
     {
         // Arrange
@@ -217,12 +217,12 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.NotNull(result.ErrorCode);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsNotNull();
         _logger.VerifyWasCalled(LogLevel.Error, "OCR stage failed");
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_ExtractsTextBlocksWithConfidence()
     {
         // Arrange
@@ -258,7 +258,7 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockStorageService.Verify(
             x => x.UploadJsonAsync(
                 "ocr-results",
@@ -271,7 +271,7 @@ public sealed class OcrStageActivityTests
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_ExtractsTablesWithStructure()
     {
         // Arrange
@@ -318,7 +318,7 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockStorageService.Verify(
             x => x.UploadJsonAsync(
                 "ocr-results",
@@ -332,7 +332,7 @@ public sealed class OcrStageActivityTests
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_ExtractsKeyValuePairs()
     {
         // Arrange
@@ -368,7 +368,7 @@ public sealed class OcrStageActivityTests
         var result = await _sut.ExecuteAsync(stageContext, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockStorageService.Verify(
             x => x.UploadJsonAsync(
                 "ocr-results",

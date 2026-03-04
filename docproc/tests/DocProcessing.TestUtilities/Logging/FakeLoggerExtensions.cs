@@ -15,7 +15,7 @@ public static class FakeLoggerExtensions
     /// <param name="fakeLogger">The fake logger instance.</param>
     /// <param name="logLevel">The expected log level.</param>
     /// <param name="message">A substring that should be contained in the log message (case-insensitive).</param>
-    /// <exception cref="Xunit.Sdk.XunitException">Thrown when no matching log entry is found.</exception>
+    /// <exception cref="Exception">Thrown when no matching log entry is found.</exception>
     public static void VerifyWasCalled<T>(this FakeLogger<T> fakeLogger, LogLevel logLevel, string message)
     {
         var hasLogRecord = fakeLogger
@@ -35,6 +35,6 @@ public static class FakeLoggerExtensions
             + Environment.NewLine
             + string.Join(Environment.NewLine, fakeLogger.Collector.GetSnapshot().Select(l => l));
 
-        throw new Xunit.Sdk.XunitException(exceptionMessage);
+        TUnit.Assertions.Assert.Fail(exceptionMessage);
     }
 }

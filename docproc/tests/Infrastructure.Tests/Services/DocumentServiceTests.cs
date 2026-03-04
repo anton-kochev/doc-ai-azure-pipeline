@@ -30,7 +30,7 @@ public class DocumentServiceTests : IDisposable
 
     #region CreateDocumentAsync Tests
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_WithValidParameters_CreatesDocumentSuccessfully()
     {
         // Arrange
@@ -57,24 +57,24 @@ public class DocumentServiceTests : IDisposable
             tenantId);
 
         // Assert
-        Assert.NotEqual(Guid.Empty, documentId);
+        await Assert.That(documentId).IsNotEqualTo(Guid.Empty);
 
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Equal(fileName, savedDocument.FileName);
-        Assert.Equal(contentType, savedDocument.ContentType);
-        Assert.Equal(sizeBytes, savedDocument.SizeBytes);
-        Assert.Equal(blobContainer, savedDocument.BlobContainer);
-        Assert.Equal(blobPath, savedDocument.BlobPath);
-        Assert.Equal(blobETag, savedDocument.BlobETag);
-        Assert.Equal(sha256Hash, savedDocument.Sha256Hash);
-        Assert.Equal(uploadedBy, savedDocument.UploadedBy);
-        Assert.Equal(tenantId, savedDocument.TenantId);
-        Assert.Equal(DocumentStatus.Uploaded, savedDocument.Status);
-        Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, savedDocument.UploadedAtUtc);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.FileName).IsEqualTo(fileName);
+        await Assert.That(savedDocument.ContentType).IsEqualTo(contentType);
+        await Assert.That(savedDocument.SizeBytes).IsEqualTo(sizeBytes);
+        await Assert.That(savedDocument.BlobContainer).IsEqualTo(blobContainer);
+        await Assert.That(savedDocument.BlobPath).IsEqualTo(blobPath);
+        await Assert.That(savedDocument.BlobETag).IsEqualTo(blobETag);
+        await Assert.That(savedDocument.Sha256Hash).IsEqualTo(sha256Hash);
+        await Assert.That(savedDocument.UploadedBy).IsEqualTo(uploadedBy);
+        await Assert.That(savedDocument.TenantId).IsEqualTo(tenantId);
+        await Assert.That(savedDocument.Status).IsEqualTo(DocumentStatus.Uploaded);
+        await Assert.That(savedDocument.UploadedAtUtc).IsEqualTo(_timeProvider.GetUtcNow().UtcDateTime);
     }
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_WithoutTenantId_CreatesDocumentWithNullTenant()
     {
         // Arrange
@@ -100,11 +100,11 @@ public class DocumentServiceTests : IDisposable
 
         // Assert
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Null(savedDocument.TenantId);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.TenantId).IsNull();
     }
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_SetsUploadedAtUtcToCurrentTime()
     {
         // Arrange
@@ -133,11 +133,11 @@ public class DocumentServiceTests : IDisposable
 
         // Assert
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Equal(expectedTime.UtcDateTime, savedDocument.UploadedAtUtc);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.UploadedAtUtc).IsEqualTo(expectedTime.UtcDateTime);
     }
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_SetsStatusToUploaded()
     {
         // Arrange
@@ -163,11 +163,11 @@ public class DocumentServiceTests : IDisposable
 
         // Assert
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Equal(DocumentStatus.Uploaded, savedDocument.Status);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.Status).IsEqualTo(DocumentStatus.Uploaded);
     }
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_LogsInformationAfterCreation()
     {
         // Arrange
@@ -195,7 +195,7 @@ public class DocumentServiceTests : IDisposable
         _logger.VerifyWasCalled(LogLevel.Information, "Created document record");
     }
 
-    [Fact]
+    [Test]
     public async Task CreateDocumentAsync_WithLargeFile_StoresCorrectSize()
     {
         // Arrange
@@ -221,15 +221,15 @@ public class DocumentServiceTests : IDisposable
 
         // Assert
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Equal(5_000_000_000, savedDocument.SizeBytes);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.SizeBytes).IsEqualTo(5_000_000_000);
     }
 
     #endregion
 
     #region GetOrCreateDocumentAsync Tests
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WhenDocumentDoesNotExist_CreatesNewDocument()
     {
         // Arrange
@@ -255,15 +255,15 @@ public class DocumentServiceTests : IDisposable
             uploadedBy);
 
         // Assert
-        Assert.True(isNew);
-        Assert.NotEqual(Guid.Empty, documentId);
+        await Assert.That(isNew).IsTrue();
+        await Assert.That(documentId).IsNotEqualTo(Guid.Empty);
 
         Document? savedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(savedDocument);
-        Assert.Equal(fileName, savedDocument.FileName);
+        await Assert.That(savedDocument).IsNotNull();
+        await Assert.That(savedDocument!.FileName).IsEqualTo(fileName);
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WhenDocumentExistsWithSameHash_ReturnsExistingDocument()
     {
         // Arrange
@@ -296,17 +296,17 @@ public class DocumentServiceTests : IDisposable
             tenantId); // Same tenant
 
         // Assert
-        Assert.False(isNew);
-        Assert.Equal(existingDocumentId, documentId);
+        await Assert.That(isNew).IsFalse();
+        await Assert.That(documentId).IsEqualTo(existingDocumentId);
 
         // Verify the original document is returned (not a new one)
         Document? returnedDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(returnedDocument);
-        Assert.Equal("existing-document.pdf", returnedDocument.FileName);
-        Assert.Equal("original-user@example.com", returnedDocument.UploadedBy);
+        await Assert.That(returnedDocument).IsNotNull();
+        await Assert.That(returnedDocument!.FileName).IsEqualTo("existing-document.pdf");
+        await Assert.That(returnedDocument.UploadedBy).IsEqualTo("original-user@example.com");
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WhenDocumentExistsButDeleted_CreatesNewDocument()
     {
         // Arrange
@@ -327,8 +327,8 @@ public class DocumentServiceTests : IDisposable
             tenantId);
 
         Document? deletedDocument = await _dbContext.Documents.FindAsync(deletedDocumentId);
-        Assert.NotNull(deletedDocument);
-        deletedDocument.Status = DocumentStatus.Deleted;
+        await Assert.That(deletedDocument).IsNotNull();
+        deletedDocument!.Status = DocumentStatus.Deleted;
         await _dbContext.SaveChangesAsync(CancellationToken.None);
 
         // Act - Try to create another document with the same hash
@@ -344,17 +344,17 @@ public class DocumentServiceTests : IDisposable
             tenantId);
 
         // Assert
-        Assert.True(isNew);
-        Assert.NotEqual(deletedDocumentId, documentId);
+        await Assert.That(isNew).IsTrue();
+        await Assert.That(documentId).IsNotEqualTo(deletedDocumentId);
 
         // Verify a new document was created
         Document? newDocument = await _dbContext.Documents.FindAsync(documentId);
-        Assert.NotNull(newDocument);
-        Assert.Equal("new-document.pdf", newDocument.FileName);
-        Assert.Equal(DocumentStatus.Uploaded, newDocument.Status);
+        await Assert.That(newDocument).IsNotNull();
+        await Assert.That(newDocument!.FileName).IsEqualTo("new-document.pdf");
+        await Assert.That(newDocument.Status).IsEqualTo(DocumentStatus.Uploaded);
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WithDifferentTenants_CreatesNewDocument()
     {
         // Arrange
@@ -388,19 +388,19 @@ public class DocumentServiceTests : IDisposable
             tenant2);
 
         // Assert
-        Assert.True(isNew);
-        Assert.NotEqual(document1Id, document2Id);
+        await Assert.That(isNew).IsTrue();
+        await Assert.That(document2Id).IsNotEqualTo(document1Id);
 
         // Verify both documents exist
         Document? doc1 = await _dbContext.Documents.FindAsync(document1Id);
         Document? doc2 = await _dbContext.Documents.FindAsync(document2Id);
-        Assert.NotNull(doc1);
-        Assert.NotNull(doc2);
-        Assert.Equal(tenant1, doc1.TenantId);
-        Assert.Equal(tenant2, doc2.TenantId);
+        await Assert.That(doc1).IsNotNull();
+        await Assert.That(doc2).IsNotNull();
+        await Assert.That(doc1!.TenantId).IsEqualTo(tenant1);
+        await Assert.That(doc2!.TenantId).IsEqualTo(tenant2);
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WithNullTenantId_HandlesCorrectly()
     {
         // Arrange
@@ -430,11 +430,11 @@ public class DocumentServiceTests : IDisposable
             "user@example.com");
 
         // Assert
-        Assert.False(isNew);
-        Assert.Equal(existingDocumentId, documentId);
+        await Assert.That(isNew).IsFalse();
+        await Assert.That(documentId).IsEqualTo(existingDocumentId);
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_LogsExistingDocumentFound_WhenDocumentExists()
     {
         // Arrange
@@ -468,7 +468,7 @@ public class DocumentServiceTests : IDisposable
         _logger.VerifyWasCalled(LogLevel.Information, "Found existing document with same hash");
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_LogsCreation_WhenCreatingNewDocument()
     {
         // Arrange
@@ -490,7 +490,7 @@ public class DocumentServiceTests : IDisposable
         _logger.VerifyWasCalled(LogLevel.Information, "Created document record");
     }
 
-    [Fact]
+    [Test]
     public async Task GetOrCreateDocumentAsync_WithDifferentHash_CreatesNewDocument()
     {
         // Arrange
@@ -522,8 +522,8 @@ public class DocumentServiceTests : IDisposable
             "user@example.com");
 
         // Assert
-        Assert.True(isNew);
-        Assert.NotEqual(document1Id, document2Id);
+        await Assert.That(isNew).IsTrue();
+        await Assert.That(document2Id).IsNotEqualTo(document1Id);
     }
 
     #endregion

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
-using Xunit;
 
 namespace Infrastructure.Tests.Services.OCR;
 
@@ -38,22 +37,19 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
 
     #region Constructor & Configuration Tests
 
-    [Fact]
-    public void Constructor_WithValidConfiguration_CreatesServiceSuccessfully()
+    [Test]
+    public async Task Constructor_WithValidConfiguration_CreatesServiceSuccessfully()
     {
         // Arrange
         var options = Options.Create(_options);
 
-        // Act
-        var exception = Record.Exception(() =>
-            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider));
-
-        // Assert
-        Assert.Null(exception);
+        // Act & Assert
+        await Assert.That(() =>
+            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider)).ThrowsNothing();
     }
 
-    [Fact]
-    public void Constructor_WithMissingEndpoint_ThrowsInvalidOperationException()
+    [Test]
+    public async Task Constructor_WithMissingEndpoint_ThrowsInvalidOperationException()
     {
         // Arrange
         var invalidOptions = new OcrOptions
@@ -66,14 +62,14 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var options = Options.Create(invalidOptions);
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider));
+        var exception = await Assert.That(() =>
+            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Contains("DocumentIntelligence endpoint must be configured", exception.Message);
+        await Assert.That(exception!.Message).Contains("DocumentIntelligence endpoint must be configured");
     }
 
-    [Fact]
-    public void Constructor_WithEmptyEndpoint_ThrowsInvalidOperationException()
+    [Test]
+    public async Task Constructor_WithEmptyEndpoint_ThrowsInvalidOperationException()
     {
         // Arrange
         var invalidOptions = new OcrOptions
@@ -86,30 +82,30 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var options = Options.Create(invalidOptions);
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider));
+        var exception = await Assert.That(() =>
+            new AzureDocumentIntelligenceOcrService(options, _logger, _timeProvider)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Contains("DocumentIntelligence endpoint must be configured", exception.Message);
+        await Assert.That(exception!.Message).Contains("DocumentIntelligence endpoint must be configured");
     }
 
-    [Fact]
-    public void Constructor_WithNullOptions_ThrowsArgumentNullException()
+    [Test]
+    public async Task Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
         // Arrange
         IOptions<OcrOptions>? nullOptions = null;
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-            new AzureDocumentIntelligenceOcrService(nullOptions!, _logger, _timeProvider));
+        var exception = await Assert.That(() =>
+            new AzureDocumentIntelligenceOcrService(nullOptions!, _logger, _timeProvider)).ThrowsExactly<ArgumentNullException>();
 
-        Assert.Equal("options", exception.ParamName);
+        await Assert.That(exception!.ParamName).IsEqualTo("options");
     }
 
     #endregion
 
     #region Parameter Validation Tests
 
-    [Fact]
+    [Test]
     public async Task AnalyzeDocumentAsync_WithNullStream_ThrowsArgumentNullException()
     {
         // Arrange
@@ -119,13 +115,13 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var jobId = Guid.NewGuid();
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => service.AnalyzeDocumentAsync(documentId, jobId, null!, CancellationToken.None));
+        var exception = await Assert.That(
+            async () => await service.AnalyzeDocumentAsync(documentId, jobId, null!, CancellationToken.None)).ThrowsExactly<ArgumentNullException>();
 
-        Assert.Equal("documentStream", exception.ParamName);
+        await Assert.That(exception!.ParamName).IsEqualTo("documentStream");
     }
 
-    [Fact]
+    [Test]
     public async Task AnalyzeDocumentAsync_WithEmptyDocumentId_ThrowsArgumentException()
     {
         // Arrange
@@ -135,14 +131,14 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var jobId = Guid.NewGuid();
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => service.AnalyzeDocumentAsync(Guid.Empty, jobId, stream, CancellationToken.None));
+        var exception = await Assert.That(
+            async () => await service.AnalyzeDocumentAsync(Guid.Empty, jobId, stream, CancellationToken.None)).ThrowsExactly<ArgumentException>();
 
-        Assert.Equal("documentId", exception.ParamName);
-        Assert.Contains("Cannot be empty", exception.Message);
+        await Assert.That(exception!.ParamName).IsEqualTo("documentId");
+        await Assert.That(exception!.Message).Contains("Cannot be empty");
     }
 
-    [Fact]
+    [Test]
     public async Task AnalyzeDocumentAsync_WithEmptyJobId_ThrowsArgumentException()
     {
         // Arrange
@@ -152,11 +148,11 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var documentId = Guid.NewGuid();
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => service.AnalyzeDocumentAsync(documentId, Guid.Empty, stream, CancellationToken.None));
+        var exception = await Assert.That(
+            async () => await service.AnalyzeDocumentAsync(documentId, Guid.Empty, stream, CancellationToken.None)).ThrowsExactly<ArgumentException>();
 
-        Assert.Equal("jobId", exception.ParamName);
-        Assert.Contains("Cannot be empty", exception.Message);
+        await Assert.That(exception!.ParamName).IsEqualTo("jobId");
+        await Assert.That(exception!.Message).Contains("Cannot be empty");
     }
 
     #endregion
@@ -179,7 +175,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
     // For now, these tests are documented as a specification and will be marked as
     // pending implementation until the refactoring is complete.
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithSinglePagePdf_ReturnsOcrResultWithOnePage()
     {
         // This test would verify:
@@ -191,7 +187,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - BlobPath is null (not stored yet)
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithMultiPagePdf_ReturnsOcrResultWithMultiplePages()
     {
         // This test would verify:
@@ -203,7 +199,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Metadata.PageCount equals 3
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithDocumentContainingTables_ExtractsTableStructures()
     {
         // This test would verify:
@@ -216,7 +212,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Metadata.TotalTables reflects table count
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithTextExtraction_PopulatesConfidenceScores()
     {
         // This test would verify:
@@ -227,7 +223,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Metadata.OverallConfidence reflects average confidence
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithBoundingBoxes_MapsCoordinatesCorrectly()
     {
         // This test would verify:
@@ -238,7 +234,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Table and text block bounding boxes are both mapped
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_PopulatesMetadata_WithProcessingDetails()
     {
         // This test would verify:
@@ -251,7 +247,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Total counts (TextBlocks, Tables, FormFields) are accurate
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithPrebuiltLayoutModel_UsesCorrectModelId()
     {
         // This test would verify:
@@ -268,7 +264,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators - these are placeholder tests
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_MapsDocumentPageToOcrPage_Correctly()
     {
         // This test would verify:
@@ -280,7 +276,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Angle/rotation is mapped
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_MapsDocumentLineToTextBlock_Correctly()
     {
         // This test would verify:
@@ -292,7 +288,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - PageNumber is associated correctly
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_MapsDocumentTableToTableData_Correctly()
     {
         // This test would verify:
@@ -305,7 +301,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Table bounding box is mapped
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_ConvertsBoundingPolygonToBoundingBox_Correctly()
     {
         // This test would verify:
@@ -316,7 +312,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Edge cases (empty polygons) are handled gracefully
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithEmptyAnalyzeResult_ReturnsEmptyOcrResult()
     {
         // This test would verify:
@@ -334,7 +330,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators - these are placeholder tests
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenRequestTimesOut_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -345,7 +341,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Error is logged at Error level
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenApiReturnsError_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -356,7 +352,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Error is logged with structured logging
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenInvalidDocument_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -366,7 +362,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Logging includes document ID for debugging
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenUnsupportedDocumentFormat_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -375,7 +371,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Exception indicates supported formats
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenStreamIsEmpty_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -384,7 +380,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Error indicates empty document content
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenUnexpectedException_ThrowsOcrProcessingException()
     {
         // This test would verify:
@@ -402,7 +398,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators - these are placeholder tests
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithCancellationTokenNone_CompletesSuccessfully()
     {
         // This test would verify:
@@ -411,7 +407,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - No OperationCanceledException is thrown
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WithCancelledToken_ThrowsOperationCanceledException()
     {
         // This test would verify:
@@ -421,7 +417,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Cancellation is logged at Warning level
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_WhenCancelledDuringProcessing_ThrowsOperationCanceledException()
     {
         // This test would verify:
@@ -439,7 +435,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators - these are placeholder tests
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_LogsStartedEvent_WithDocumentAndJobIds()
     {
         // This test would verify:
@@ -449,7 +445,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Structured logging captures IDs as properties
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_LogsCompletedEvent_WithMetrics()
     {
         // This test would verify:
@@ -460,7 +456,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Log level is Information
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_LogsFailedEvent_WhenExceptionOccurs()
     {
         // This test would verify:
@@ -471,7 +467,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         // - Structured logging captures error details
     }
 
-    [Fact(Skip = "Requires DocumentAnalysisClient wrapper for unit testing")]
+    [Test, Skip("Requires DocumentAnalysisClient wrapper for unit testing")]
     public async Task AnalyzeDocumentAsync_LogsCorrelationData_InAllEvents()
     {
         // This test would verify:
@@ -596,7 +592,7 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
     //
     // Example integration test structure:
     /*
-    [Fact]
+    [Test]
     [Trait("Category", "Integration")]
     public async Task Integration_AnalyzeDocumentAsync_WithRealPdf_ExtractsTextCorrectly()
     {
@@ -616,11 +612,11 @@ public sealed class AzureDocumentIntelligenceOcrServiceTests
         var result = await service.AnalyzeDocumentAsync(documentId, jobId, stream);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(documentId, result.DocumentId);
-        Assert.Equal(jobId, result.JobId);
-        Assert.NotEmpty(result.Pages);
-        Assert.Contains("Invoice", result.Pages[0].TextBlocks.Select(t => t.Text));
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.DocumentId).IsEqualTo(documentId);
+        await Assert.That(result.JobId).IsEqualTo(jobId);
+        await Assert.That(result.Pages).IsNotEmpty();
+        await Assert.That(result.Pages[0].TextBlocks.Select(t => t.Text)).Contains("Invoice");
     }
     */
 

@@ -40,7 +40,7 @@ public class ServiceBusServiceMessageTests
     /// - ApplicationProperties["JobId"] = jobId.ToString()
     /// - ApplicationProperties["DocumentId"] = documentId.ToString()
     /// </summary>
-    [Fact]
+    [Test]
     public async Task EnqueueJobAsync_ShouldCallSendMessageAsync_WithCorrectMessageStructure()
     {
         // Arrange
@@ -84,35 +84,35 @@ public class ServiceBusServiceMessageTests
         await service.EnqueueJobAsync(jobId, correlationId, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(capturedMessage);
+        await Assert.That(capturedMessage).IsNotNull();
 
         // Verify message properties
-        Assert.Equal(jobId.ToString(), capturedMessage.MessageId);
-        Assert.Equal(correlationId, capturedMessage.CorrelationId);
-        Assert.Equal("application/json", capturedMessage.ContentType);
+        await Assert.That(capturedMessage!.MessageId).IsEqualTo(jobId.ToString());
+        await Assert.That(capturedMessage.CorrelationId).IsEqualTo(correlationId);
+        await Assert.That(capturedMessage.ContentType).IsEqualTo("application/json");
 
         // Verify application properties
-        Assert.Equal(jobId.ToString(), capturedMessage.ApplicationProperties["JobId"]);
+        await Assert.That(capturedMessage.ApplicationProperties["JobId"]).IsEqualTo(jobId.ToString());
 
         // Verify message body contains exactly 4 fields: version, jobId, correlationId, enqueuedAtUtc
         string messageBody = capturedMessage.Body.ToString();
         Dictionary<string, JsonElement>? deserializedBody =
             JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBody);
 
-        Assert.NotNull(deserializedBody);
-        Assert.Equal(4, deserializedBody.Count);
+        await Assert.That(deserializedBody).IsNotNull();
+        await Assert.That(deserializedBody!.Count).IsEqualTo(4);
 
-        Assert.True(deserializedBody.ContainsKey("version"));
-        Assert.Equal("1.0", deserializedBody["version"].GetString());
+        await Assert.That(deserializedBody.ContainsKey("version")).IsTrue();
+        await Assert.That(deserializedBody["version"].GetString()).IsEqualTo("1.0");
 
-        Assert.True(deserializedBody.ContainsKey("jobId"));
-        Assert.Equal(jobId, deserializedBody["jobId"].GetGuid());
+        await Assert.That(deserializedBody.ContainsKey("jobId")).IsTrue();
+        await Assert.That(deserializedBody["jobId"].GetGuid()).IsEqualTo(jobId);
 
-        Assert.True(deserializedBody.ContainsKey("correlationId"));
-        Assert.Equal(correlationId, deserializedBody["correlationId"].GetString());
+        await Assert.That(deserializedBody.ContainsKey("correlationId")).IsTrue();
+        await Assert.That(deserializedBody["correlationId"].GetString()).IsEqualTo(correlationId);
 
-        Assert.True(deserializedBody.ContainsKey("enqueuedAtUtc"));
-        Assert.Equal(deserializedBody["enqueuedAtUtc"].GetDateTime(), _fixedTime);
+        await Assert.That(deserializedBody.ContainsKey("enqueuedAtUtc")).IsTrue();
+        await Assert.That(deserializedBody["enqueuedAtUtc"].GetDateTime()).IsEqualTo(_fixedTime);
 
         // Verify SendMessageAsync was called exactly once
         mockSender.Verify(
@@ -124,8 +124,8 @@ public class ServiceBusServiceMessageTests
     /// Test to validate the message payload structure that ServiceBusService creates.
     /// This test documents the expected format.
     /// </summary>
-    [Fact]
-    public void MessagePayloadSerialization_ShouldContainOnlyRequiredFields()
+    [Test]
+    public async Task MessagePayloadSerialization_ShouldContainOnlyRequiredFields()
     {
         // Arrange
         Guid jobId = Guid.NewGuid();
@@ -147,29 +147,29 @@ public class ServiceBusServiceMessageTests
             JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBody);
 
         // Assert - Verify exactly 4 fields are present, no more, no less
-        Assert.NotNull(deserializedPayload);
-        Assert.Equal(4, deserializedPayload.Count);
+        await Assert.That(deserializedPayload).IsNotNull();
+        await Assert.That(deserializedPayload!.Count).IsEqualTo(4);
 
         // Verify required fields with correct values
-        Assert.True(deserializedPayload.ContainsKey("version"));
-        Assert.Equal("1.0", deserializedPayload["version"].GetString());
+        await Assert.That(deserializedPayload.ContainsKey("version")).IsTrue();
+        await Assert.That(deserializedPayload["version"].GetString()).IsEqualTo("1.0");
 
-        Assert.True(deserializedPayload.ContainsKey("jobId"));
-        Assert.Equal(jobId, deserializedPayload["jobId"].GetGuid());
+        await Assert.That(deserializedPayload.ContainsKey("jobId")).IsTrue();
+        await Assert.That(deserializedPayload["jobId"].GetGuid()).IsEqualTo(jobId);
 
-        Assert.True(deserializedPayload.ContainsKey("correlationId"));
-        Assert.Equal(correlationId, deserializedPayload["correlationId"].GetString());
+        await Assert.That(deserializedPayload.ContainsKey("correlationId")).IsTrue();
+        await Assert.That(deserializedPayload["correlationId"].GetString()).IsEqualTo(correlationId);
 
-        Assert.True(deserializedPayload.ContainsKey("enqueuedAtUtc"));
-        Assert.Equal(_fixedTime, deserializedPayload["enqueuedAtUtc"].GetDateTime());
+        await Assert.That(deserializedPayload.ContainsKey("enqueuedAtUtc")).IsTrue();
+        await Assert.That(deserializedPayload["enqueuedAtUtc"].GetDateTime()).IsEqualTo(_fixedTime);
     }
 
     /// <summary>
     /// Test that validates the message payload is compatible with ProcessDocumentMessage
     /// after we update it to require only minimal fields.
     /// </summary>
-    [Fact]
-    public void MessagePayload_ShouldDeserializeToProcessDocumentMessage()
+    [Test]
+    public async Task MessagePayload_ShouldDeserializeToProcessDocumentMessage()
     {
         // Arrange
         Guid jobId = Guid.NewGuid();
@@ -192,11 +192,11 @@ public class ServiceBusServiceMessageTests
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         // Assert
-        Assert.NotNull(deserializedMessage);
-        Assert.Equal("1.0", deserializedMessage.Version);
-        Assert.Equal(jobId.ToString(), deserializedMessage.JobId);
-        Assert.Equal(correlationId, deserializedMessage.CorrelationId);
-        Assert.Equal(enqueuedAtUtc, deserializedMessage.EnqueuedAtUtc);
+        await Assert.That(deserializedMessage).IsNotNull();
+        await Assert.That(deserializedMessage!.Version).IsEqualTo("1.0");
+        await Assert.That(deserializedMessage.JobId).IsEqualTo(jobId.ToString());
+        await Assert.That(deserializedMessage.CorrelationId).IsEqualTo(correlationId);
+        await Assert.That(deserializedMessage.EnqueuedAtUtc).IsEqualTo(enqueuedAtUtc);
     }
 }
 

@@ -10,8 +10,8 @@ public class ProcessJobStatusTransitionsTests
 {
     #region IsValidTransition Tests - Existing Transitions
 
-    [Fact]
-    public void IsValidTransition_FromPendingToProcessing_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromPendingToProcessing_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -19,11 +19,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Processing);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromProcessingToCompleted_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromProcessingToCompleted_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -31,11 +31,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Completed);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromProcessingToFailed_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromProcessingToFailed_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -43,11 +43,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Failed);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromFailedToPending_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromFailedToPending_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -55,15 +55,15 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Pending);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
     #endregion
 
     #region IsValidTransition Tests - ManualReview Transitions
 
-    [Fact]
-    public void IsValidTransition_FromProcessingToManualReview_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromProcessingToManualReview_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -71,11 +71,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.ManualReview);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromManualReviewToProcessing_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromManualReviewToProcessing_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -83,11 +83,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Processing);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromManualReviewToCompleted_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromManualReviewToCompleted_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -95,11 +95,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Completed);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsValidTransition_FromManualReviewToFailed_ReturnsTrue()
+    [Test]
+    public async Task IsValidTransition_FromManualReviewToFailed_ReturnsTrue()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -107,15 +107,15 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Failed);
 
         // Assert
-        Assert.True(result);
+        await Assert.That(result).IsTrue();
     }
 
     #endregion
 
     #region IsValidTransition Tests - Invalid Transitions
 
-    [Fact]
-    public void IsValidTransition_FromPendingToCompleted_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_FromPendingToCompleted_ReturnsFalse()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -123,11 +123,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Completed);
 
         // Assert
-        Assert.False(result);
+        await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsValidTransition_FromPendingToFailed_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_FromPendingToFailed_ReturnsFalse()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -135,11 +135,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Failed);
 
         // Assert
-        Assert.False(result);
+        await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsValidTransition_FromPendingToManualReview_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_FromPendingToManualReview_ReturnsFalse()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -147,11 +147,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.ManualReview);
 
         // Assert
-        Assert.False(result);
+        await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsValidTransition_FromCompletedToAnyStatus_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_FromCompletedToAnyStatus_ReturnsFalse()
     {
         // Arrange - Completed is a terminal state
         ProcessJobStatus[] targetStatuses =
@@ -169,12 +169,12 @@ public class ProcessJobStatusTransitionsTests
             bool result = ProcessJobStatusTransitions.IsValidTransition(
                 ProcessJobStatus.Completed,
                 targetStatus);
-            Assert.False(result, $"Transition from Completed to {targetStatus} should be invalid");
+            await Assert.That(result).IsFalse();
         }
     }
 
-    [Fact]
-    public void IsValidTransition_FromManualReviewToPending_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_FromManualReviewToPending_ReturnsFalse()
     {
         // Act
         bool result = ProcessJobStatusTransitions.IsValidTransition(
@@ -182,11 +182,11 @@ public class ProcessJobStatusTransitionsTests
             ProcessJobStatus.Pending);
 
         // Assert
-        Assert.False(result);
+        await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsValidTransition_SameStatus_ReturnsFalse()
+    [Test]
+    public async Task IsValidTransition_SameStatus_ReturnsFalse()
     {
         // Arrange
         ProcessJobStatus[] allStatuses =
@@ -202,7 +202,7 @@ public class ProcessJobStatusTransitionsTests
         foreach (ProcessJobStatus status in allStatuses)
         {
             bool result = ProcessJobStatusTransitions.IsValidTransition(status, status);
-            Assert.False(result, $"Transition from {status} to {status} should be invalid");
+            await Assert.That(result).IsFalse();
         }
     }
 
@@ -210,67 +210,67 @@ public class ProcessJobStatusTransitionsTests
 
     #region GetValidTransitions Tests
 
-    [Fact]
-    public void GetValidTransitions_FromPending_ReturnsProcessing()
+    [Test]
+    public async Task GetValidTransitions_FromPending_ReturnsProcessing()
     {
         // Act
         IReadOnlyCollection<ProcessJobStatus> validTransitions =
             ProcessJobStatusTransitions.GetValidTransitions(ProcessJobStatus.Pending);
 
         // Assert
-        Assert.Single(validTransitions);
-        Assert.Contains(ProcessJobStatus.Processing, validTransitions);
+        await Assert.That(validTransitions).HasSingleItem();
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Processing);
     }
 
-    [Fact]
-    public void GetValidTransitions_FromProcessing_ReturnsCompletedFailedAndManualReview()
+    [Test]
+    public async Task GetValidTransitions_FromProcessing_ReturnsCompletedFailedAndManualReview()
     {
         // Act
         IReadOnlyCollection<ProcessJobStatus> validTransitions =
             ProcessJobStatusTransitions.GetValidTransitions(ProcessJobStatus.Processing);
 
         // Assert
-        Assert.Equal(3, validTransitions.Count);
-        Assert.Contains(ProcessJobStatus.Completed, validTransitions);
-        Assert.Contains(ProcessJobStatus.Failed, validTransitions);
-        Assert.Contains(ProcessJobStatus.ManualReview, validTransitions);
+        await Assert.That(validTransitions.Count).IsEqualTo(3);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Completed);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Failed);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.ManualReview);
     }
 
-    [Fact]
-    public void GetValidTransitions_FromFailed_ReturnsPending()
+    [Test]
+    public async Task GetValidTransitions_FromFailed_ReturnsPending()
     {
         // Act
         IReadOnlyCollection<ProcessJobStatus> validTransitions =
             ProcessJobStatusTransitions.GetValidTransitions(ProcessJobStatus.Failed);
 
         // Assert
-        Assert.Single(validTransitions);
-        Assert.Contains(ProcessJobStatus.Pending, validTransitions);
+        await Assert.That(validTransitions).HasSingleItem();
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Pending);
     }
 
-    [Fact]
-    public void GetValidTransitions_FromManualReview_ReturnsProcessingCompletedAndFailed()
+    [Test]
+    public async Task GetValidTransitions_FromManualReview_ReturnsProcessingCompletedAndFailed()
     {
         // Act
         IReadOnlyCollection<ProcessJobStatus> validTransitions =
             ProcessJobStatusTransitions.GetValidTransitions(ProcessJobStatus.ManualReview);
 
         // Assert
-        Assert.Equal(3, validTransitions.Count);
-        Assert.Contains(ProcessJobStatus.Processing, validTransitions);
-        Assert.Contains(ProcessJobStatus.Completed, validTransitions);
-        Assert.Contains(ProcessJobStatus.Failed, validTransitions);
+        await Assert.That(validTransitions.Count).IsEqualTo(3);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Processing);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Completed);
+        await Assert.That(validTransitions).Contains(ProcessJobStatus.Failed);
     }
 
-    [Fact]
-    public void GetValidTransitions_FromCompleted_ReturnsEmpty()
+    [Test]
+    public async Task GetValidTransitions_FromCompleted_ReturnsEmpty()
     {
         // Act
         IReadOnlyCollection<ProcessJobStatus> validTransitions =
             ProcessJobStatusTransitions.GetValidTransitions(ProcessJobStatus.Completed);
 
         // Assert
-        Assert.Empty(validTransitions);
+        await Assert.That(validTransitions).IsEmpty();
     }
 
     #endregion

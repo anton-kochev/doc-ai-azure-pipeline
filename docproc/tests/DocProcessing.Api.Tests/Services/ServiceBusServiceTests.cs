@@ -29,8 +29,8 @@ public class ServiceBusServiceTests
 
     #region Constructor Tests
 
-    [Fact]
-    public void Constructor_WithNullQueueName_ThrowsInvalidOperationException()
+    [Test]
+    public async Task Constructor_WithNullQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
@@ -43,14 +43,14 @@ public class ServiceBusServiceTests
         });
 
         // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, timeProvider, factory.Object));
+        var exception = await Assert.That(() =>
+            new ServiceBusService(logger, options, timeProvider, factory.Object)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("ServiceBus:QueueName is not configured");
     }
 
-    [Fact]
-    public void Constructor_WithEmptyQueueName_ThrowsInvalidOperationException()
+    [Test]
+    public async Task Constructor_WithEmptyQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
@@ -63,14 +63,14 @@ public class ServiceBusServiceTests
         });
 
         // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, timeProvider, factory.Object));
+        var exception = await Assert.That(() =>
+            new ServiceBusService(logger, options, timeProvider, factory.Object)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("ServiceBus:QueueName is not configured");
     }
 
-    [Fact]
-    public void Constructor_WithWhitespaceQueueName_ThrowsInvalidOperationException()
+    [Test]
+    public async Task Constructor_WithWhitespaceQueueName_ThrowsInvalidOperationException()
     {
         // Arrange
         FakeLogger<ServiceBusService> logger = CreateLogger();
@@ -83,10 +83,10 @@ public class ServiceBusServiceTests
         });
 
         // Act & Assert
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new ServiceBusService(logger, options, timeProvider, factory.Object));
+        var exception = await Assert.That(() =>
+            new ServiceBusService(logger, options, timeProvider, factory.Object)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("ServiceBus:QueueName is not configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("ServiceBus:QueueName is not configured");
     }
 
     #endregion
@@ -100,7 +100,7 @@ public class ServiceBusServiceTests
 
     #region DisposeAsync Tests
 
-    [Fact]
+    [Test]
     public async Task DisposeAsync_DisposesTheSender()
     {
         // Arrange

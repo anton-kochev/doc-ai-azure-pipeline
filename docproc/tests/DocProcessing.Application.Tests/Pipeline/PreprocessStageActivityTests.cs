@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
-using Xunit;
 
 namespace DocProcessing.Application.Tests.Pipeline;
 
@@ -57,7 +56,7 @@ public sealed class PreprocessStageActivityTests
 
     #region Happy Path Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithValidOcrResults_ReturnsSuccessWithPreprocessedData()
     {
         // Arrange
@@ -89,10 +88,10 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Output);
-        Assert.NotNull(result.Metadata);
-        Assert.Contains("preprocessBlobPath", result.Metadata.Keys);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(result.Output).IsNotNull();
+        await Assert.That(result.Metadata).IsNotNull();
+        await Assert.That(result.Metadata.Keys).Contains("preprocessBlobPath");
 
         _mockStorageService.Verify(
             x => x.DownloadJsonAsync<OcrResult>("ocr-results", ocrBlobPath, It.IsAny<CancellationToken>()),
@@ -107,7 +106,7 @@ public sealed class PreprocessStageActivityTests
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithMultiplePages_NormalizesAllPages()
     {
         // Arrange
@@ -137,7 +136,7 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
 
         // Verify text normalizer was called for each page's text blocks
         _mockTextNormalizer.Verify(
@@ -145,7 +144,7 @@ public sealed class PreprocessStageActivityTests
             Times.AtLeastOnce);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithTablesAndFormFields_ConvertsToStructuredFormat()
     {
         // Arrange
@@ -204,7 +203,7 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
 
         _mockTableConverter.Verify(
             x => x.ConvertToStructured(It.IsAny<TableData>()),
@@ -215,7 +214,7 @@ public sealed class PreprocessStageActivityTests
             Times.AtLeastOnce);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_StoresResultInBlobStorage_AndReturnsCorrectMetadata()
     {
         // Arrange
@@ -248,18 +247,18 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.Contains("preprocessBlobPath", result.Metadata.Keys);
-        Assert.Equal(expectedBlobPath, result.Metadata["preprocessBlobPath"]);
-        Assert.Contains("pageCount", result.Metadata.Keys);
-        Assert.Contains("totalWordCount", result.Metadata.Keys);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(result.Metadata.Keys).Contains("preprocessBlobPath");
+        await Assert.That(result.Metadata["preprocessBlobPath"]).IsEqualTo(expectedBlobPath);
+        await Assert.That(result.Metadata.Keys).Contains("pageCount");
+        await Assert.That(result.Metadata.Keys).Contains("totalWordCount");
     }
 
     #endregion
 
     #region Text Normalization Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithExtraWhitespace_NormalizesWhitespace()
     {
         // Arrange
@@ -293,11 +292,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTextNormalizer.Verify(x => x.NormalizeText(textWithWhitespace), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithUnicodeCharacters_NormalizesToNFC()
     {
         // Arrange
@@ -333,11 +332,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTextNormalizer.Verify(x => x.NormalizeText(unnormalizedText), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithMultipleLineBreaks_CollapsesToSingleBreaks()
     {
         // Arrange
@@ -371,11 +370,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTextNormalizer.Verify(x => x.NormalizeText(textWithBreaks), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithLigatures_ExpandsToRegularCharacters()
     {
         // Arrange
@@ -409,11 +408,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTextNormalizer.Verify(x => x.NormalizeText(textWithLigatures), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithMixedNewlines_NormalizesToConsistentFormat()
     {
         // Arrange
@@ -447,7 +446,7 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTextNormalizer.Verify(x => x.NormalizeText(textWithMixedNewlines), Times.Once);
     }
 
@@ -455,7 +454,7 @@ public sealed class PreprocessStageActivityTests
 
     #region Table Conversion Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithSimpleTable_GeneratesJsonAndCsv()
     {
         // Arrange
@@ -506,11 +505,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTableConverter.Verify(x => x.ConvertToStructured(table), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithTableHeaders_ExtractsHeadersCorrectly()
     {
         // Arrange
@@ -567,11 +566,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTableConverter.Verify(x => x.ConvertToStructured(table), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithSpannedCells_HandlesSpansCorrectly()
     {
         // Arrange
@@ -620,11 +619,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTableConverter.Verify(x => x.ConvertToStructured(It.IsAny<TableData>()), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithNumericTable_PreservesNumericFormats()
     {
         // Arrange
@@ -677,7 +676,7 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockTableConverter.Verify(x => x.ConvertToStructured(table), Times.Once);
     }
 
@@ -685,7 +684,7 @@ public sealed class PreprocessStageActivityTests
 
     #region Form Field Parsing Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithDateFields_ParsesAndNormalizesDates()
     {
         // Arrange
@@ -741,11 +740,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockFieldParser.Verify(x => x.ParseField(formField), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithCurrencyFields_ParsesAndNormalizesCurrency()
     {
         // Arrange
@@ -800,11 +799,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockFieldParser.Verify(x => x.ParseField(formField), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithNumericFields_ParsesNumbers()
     {
         // Arrange
@@ -859,11 +858,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockFieldParser.Verify(x => x.ParseField(formField), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithInvalidDateFormat_StoresOriginalValue()
     {
         // Arrange
@@ -918,11 +917,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockFieldParser.Verify(x => x.ParseField(formField), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithMixedFieldTypes_ParsesAllCorrectly()
     {
         // Arrange
@@ -998,7 +997,7 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
         _mockFieldParser.Verify(x => x.ParseField(It.IsAny<FormField>()), Times.Exactly(3));
     }
 
@@ -1006,7 +1005,7 @@ public sealed class PreprocessStageActivityTests
 
     #region Error Handling Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WhenOcrBlobPathMissing_ReturnsFailure()
     {
         // Arrange
@@ -1018,12 +1017,12 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.Equal("PREPROCESS_MISSING_OCR_PATH", result.ErrorCode);
-        Assert.Contains("OCR blob path not found", result.ErrorMessage);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsEqualTo("PREPROCESS_MISSING_OCR_PATH");
+        await Assert.That(result.ErrorMessage).Contains("OCR blob path not found");
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WhenOcrResultNotFound_ReturnsFailure()
     {
         // Arrange
@@ -1040,12 +1039,12 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.Equal("PREPROCESS_OCR_NOT_FOUND", result.ErrorCode);
-        Assert.Contains("OCR result not found", result.ErrorMessage);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsEqualTo("PREPROCESS_OCR_NOT_FOUND");
+        await Assert.That(result.ErrorMessage).Contains("OCR result not found");
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WhenBlobStorageFails_ReturnsFailureWithErrorCode()
     {
         // Arrange
@@ -1062,12 +1061,12 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.Equal("PREPROCESS_ERROR", result.ErrorCode);
-        Assert.Contains("Blob storage connection failed", result.ErrorMessage);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsEqualTo("PREPROCESS_ERROR");
+        await Assert.That(result.ErrorMessage).Contains("Blob storage connection failed");
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WhenProcessingThrows_ReturnsFailureWithException()
     {
         // Arrange
@@ -1089,16 +1088,16 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.Equal("PREPROCESS_ERROR", result.ErrorCode);
-        Assert.Contains("Invalid text format", result.ErrorMessage);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsEqualTo("PREPROCESS_ERROR");
+        await Assert.That(result.ErrorMessage).Contains("Invalid text format");
     }
 
     #endregion
 
     #region Edge Cases Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithEmptyOcrResult_ReturnsSuccessWithEmptyData()
     {
         // Arrange
@@ -1143,12 +1142,12 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Metadata);
-        Assert.Equal(0, result.Metadata["pageCount"]);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(result.Metadata).IsNotNull();
+        await Assert.That(result.Metadata["pageCount"]).IsEqualTo(0);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithZeroConfidence_StillProcesses()
     {
         // Arrange
@@ -1179,10 +1178,10 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        await Assert.That(result.IsSuccess).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithNullMetadata_InitializesMetadata()
     {
         // Arrange
@@ -1222,11 +1221,11 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Metadata);
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(result.Metadata).IsNotNull();
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_WithCancellationToken_RespectsCancellation()
     {
         // Arrange
@@ -1246,15 +1245,15 @@ public sealed class PreprocessStageActivityTests
         var result = await _activity.ExecuteAsync(context, cts.Token);
 
         // Assert
-        Assert.False(result.IsSuccess);
-        Assert.Equal("PREPROCESS_ERROR", result.ErrorCode);
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.ErrorCode).IsEqualTo("PREPROCESS_ERROR");
     }
 
     #endregion
 
     #region Logging Verification Tests
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_LogsStartAndCompletion_WithCorrectCorrelationId()
     {
         // Arrange
@@ -1287,16 +1286,16 @@ public sealed class PreprocessStageActivityTests
 
         // Assert
         var logs = _logger.Collector.GetSnapshot();
-        Assert.Contains(logs, log =>
+        await Assert.That(logs).Contains(log =>
             log.Level == LogLevel.Information &&
             log.Message.Contains("Starting Preprocess stage") &&
             log.Message.Contains(correlationId));
-        Assert.Contains(logs, log =>
+        await Assert.That(logs).Contains(log =>
             log.Level == LogLevel.Information &&
             log.Message.Contains("Preprocess stage completed"));
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_OnFailure_LogsErrorWithJobId()
     {
         // Arrange
@@ -1314,13 +1313,13 @@ public sealed class PreprocessStageActivityTests
 
         // Assert
         var logs = _logger.Collector.GetSnapshot();
-        Assert.Contains(logs, log =>
+        await Assert.That(logs).Contains(log =>
             log.Level == LogLevel.Error &&
             log.Message.Contains("Preprocess stage failed") &&
             log.Message.Contains(jobId.ToString()));
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_LogsProcessingStatistics_InMetadata()
     {
         // Arrange
@@ -1351,13 +1350,13 @@ public sealed class PreprocessStageActivityTests
 
         // Assert
         var logs = _logger.Collector.GetSnapshot();
-        Assert.Contains(logs, log =>
+        await Assert.That(logs).Contains(log =>
             log.Level == LogLevel.Information &&
             log.Message.Contains("Preprocess stage completed"));
 
-        Assert.NotNull(result.Metadata);
-        Assert.Contains("pageCount", result.Metadata.Keys);
-        Assert.Contains("totalWordCount", result.Metadata.Keys);
+        await Assert.That(result.Metadata).IsNotNull();
+        await Assert.That(result.Metadata.Keys).Contains("pageCount");
+        await Assert.That(result.Metadata.Keys).Contains("totalWordCount");
     }
 
     #endregion

@@ -11,8 +11,8 @@ public class BlobStorageServiceTests
 
     #region Constructor Tests
 
-    [Fact]
-    public void Constructor_WithValidOptions_DoesNotThrow()
+    [Test]
+    public async Task Constructor_WithValidOptions_DoesNotThrow()
     {
         // Arrange
         IOptions<AzureStorageOptions> options = Options.Create(new AzureStorageOptions
@@ -22,12 +22,11 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options, _logger));
-        Assert.Null(exception);
+        await Assert.That(() => new BlobStorageService(options, _logger)).ThrowsNothing();
     }
 
-    [Fact]
-    public void Constructor_WithAccountNameOnly_DoesNotThrow()
+    [Test]
+    public async Task Constructor_WithAccountNameOnly_DoesNotThrow()
     {
         // Arrange
         IOptions<AzureStorageOptions> options = Options.Create(new AzureStorageOptions
@@ -37,15 +36,14 @@ public class BlobStorageServiceTests
         });
 
         // Act & Assert - Should not throw
-        Exception? exception = Record.Exception(() => new BlobStorageService(options, _logger));
-        Assert.Null(exception);
+        await Assert.That(() => new BlobStorageService(options, _logger)).ThrowsNothing();
     }
 
     #endregion
 
     #region ValidateConfiguration Tests (via UploadAsync)
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithNoConnectionStringOrAccountName_ThrowsInvalidOperationException()
     {
         // Arrange
@@ -60,13 +58,12 @@ public class BlobStorageServiceTests
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadAsync("test.txt", stream));
+        var exception = await Assert.That(async () => await service.UploadAsync("test.txt", stream)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("Either Azure Storage connection string or account name must be configured");
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithEmptyConnectionStringAndEmptyAccountName_ThrowsInvalidOperationException()
     {
         // Arrange
@@ -81,13 +78,12 @@ public class BlobStorageServiceTests
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadAsync("test.txt", stream));
+        var exception = await Assert.That(async () => await service.UploadAsync("test.txt", stream)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("Either Azure Storage connection string or account name must be configured");
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithNullConnectionStringAndEmptyAccountName_ThrowsInvalidOperationException()
     {
         // Arrange
@@ -102,10 +98,9 @@ public class BlobStorageServiceTests
         using MemoryStream stream = new([1, 2, 3]);
 
         // Act & Assert
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await service.UploadAsync("test.txt", stream));
+        var exception = await Assert.That(async () => await service.UploadAsync("test.txt", stream)).ThrowsExactly<InvalidOperationException>();
 
-        Assert.Equal("Either Azure Storage connection string or account name must be configured", exception.Message);
+        await Assert.That(exception!.Message).IsEqualTo("Either Azure Storage connection string or account name must be configured");
     }
 
     #endregion
@@ -130,7 +125,7 @@ public class BlobStorageServiceTests
     //
     // Example integration test setup:
     /*
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithValidStream_UploadsSuccessfully()
     {
         // Arrange
@@ -147,15 +142,15 @@ public class BlobStorageServiceTests
         UploadResult result = await service.UploadAsync("test.txt", stream, "text/plain");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal("test.txt", result.FileName);
-        Assert.Equal("text/plain", result.ContentType);
-        Assert.Equal(12, result.FileSizeBytes);
-        Assert.NotEmpty(result.ETag);
-        Assert.Equal("test-container", result.ContainerName);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.FileName).IsEqualTo("test.txt");
+        await Assert.That(result.ContentType).IsEqualTo("text/plain");
+        await Assert.That(result.FileSizeBytes).IsEqualTo(12);
+        await Assert.That(result.ETag).IsNotEmpty();
+        await Assert.That(result.ContainerName).IsEqualTo("test-container");
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithLargeFile_UploadsSuccessfully()
     {
         // This test would verify:
@@ -164,7 +159,7 @@ public class BlobStorageServiceTests
         // - Stream is properly disposed
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithCustomContentType_SetsContentTypeCorrectly()
     {
         // This test would verify:
@@ -172,7 +167,7 @@ public class BlobStorageServiceTests
         // - Content type is included in the result
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithNoContentType_UploadsWithoutContentType()
     {
         // This test would verify:
@@ -180,7 +175,7 @@ public class BlobStorageServiceTests
         // - Result has null content type
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_CreatesContainerIfNotExists()
     {
         // This test would verify:
@@ -188,7 +183,7 @@ public class BlobStorageServiceTests
         // - Subsequent uploads to existing container succeed
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithExistingBlob_OverwritesBlob()
     {
         // This test would verify:
@@ -196,7 +191,7 @@ public class BlobStorageServiceTests
         // - ETag changes after overwrite
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithConnectionString_UsesConnectionString()
     {
         // This test would verify:
@@ -204,7 +199,7 @@ public class BlobStorageServiceTests
         // - Upload succeeds using connection string
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithAccountNameOnly_UsesManagedIdentity()
     {
         // This test would verify:
@@ -213,7 +208,7 @@ public class BlobStorageServiceTests
         // NOTE: This requires a real Azure environment or sophisticated mocking
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithEmptyStream_UploadsZeroByteFile()
     {
         // This test would verify:
@@ -221,7 +216,7 @@ public class BlobStorageServiceTests
         // - Result reports zero bytes
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_WithSpecialCharactersInFileName_UploadsCorrectly()
     {
         // This test would verify:
@@ -229,7 +224,7 @@ public class BlobStorageServiceTests
         // - Result contains the correct file name
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_ReturnsCorrectBlobUrl()
     {
         // This test would verify:
@@ -238,7 +233,7 @@ public class BlobStorageServiceTests
         // - URL includes container and blob name
     }
 
-    [Fact]
+    [Test]
     public async Task UploadBlobAsync_ReturnsValidETag()
     {
         // This test would verify:
@@ -260,12 +255,12 @@ public class BlobStorageServiceTests
     // Alternatively, use the Docker container:
     // docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 mcr.microsoft.com/azure-storage/azurite
     //
-    // Mark integration tests with [Trait("Category", "Integration")] to separate from unit tests
+    // Mark integration tests with [Property("Category", "Integration")] to separate from unit tests
     // This allows running: dotnet test --filter "Category!=Integration"
 
     /*
-    [Fact]
-    [Trait("Category", "Integration")]
+    [Test]
+    [Property("Category", "Integration")]
     public async Task Integration_UploadBlobAsync_WithAzurite_UploadsSuccessfully()
     {
         // Arrange
@@ -284,12 +279,12 @@ public class BlobStorageServiceTests
         UploadResult result = await service.UploadAsync(fileName, stream, "text/plain");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(fileName, result.FileName);
-        Assert.Equal("text/plain", result.ContentType);
-        Assert.Equal(testContent.Length, result.FileSizeBytes);
-        Assert.NotEmpty(result.ETag);
-        Assert.Contains(fileName, result.BlobUrl);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.FileName).IsEqualTo(fileName);
+        await Assert.That(result.ContentType).IsEqualTo("text/plain");
+        await Assert.That(result.FileSizeBytes).IsEqualTo(testContent.Length);
+        await Assert.That(result.ETag).IsNotEmpty();
+        await Assert.That(result.BlobUrl).Contains(fileName);
     }
     */
 

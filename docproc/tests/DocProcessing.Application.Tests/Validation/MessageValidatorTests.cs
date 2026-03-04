@@ -1,6 +1,5 @@
 using DocProcessing.Application.Models;
 using DocProcessing.Application.Validation;
-using Xunit;
 
 namespace DocProcessing.Application.Tests.Validation;
 
@@ -18,8 +17,8 @@ public class MessageValidatorTests
 {
     #region Valid Message Tests
 
-    [Fact]
-    public void Validate_WithMinimalRequiredFields_ReturnsTrue()
+    [Test]
+    public async Task Validate_WithMinimalRequiredFields_ReturnsTrue()
     {
         // Arrange - Only the essential fields needed for orchestration
         // The orchestrator will fetch Document and Job details from database using JobId
@@ -34,16 +33,16 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.True(isValid, $"Validation should pass with minimal required fields. Error: {errorMessage}");
-        Assert.Null(errorMessage);
+        await Assert.That(isValid).IsTrue();
+        await Assert.That(errorMessage).IsNull();
     }
 
     #endregion
 
     #region Null and Empty Message Tests
 
-    [Fact]
-    public void Validate_WithNullMessage_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithNullMessage_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage? message = null;
@@ -52,16 +51,16 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("Message is null or could not be deserialized", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("Message is null or could not be deserialized");
     }
 
     #endregion
 
     #region Version Tests
 
-    [Fact]
-    public void Validate_WithNullVersion_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithNullVersion_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -75,12 +74,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("Message version is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("Message version is required");
     }
 
-    [Fact]
-    public void Validate_WithEmptyVersion_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithEmptyVersion_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -94,12 +93,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("Message version is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("Message version is required");
     }
 
-    [Fact]
-    public void Validate_WithWhitespaceVersion_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithWhitespaceVersion_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -113,12 +112,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("Message version is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("Message version is required");
     }
 
-    [Fact]
-    public void Validate_WithUnsupportedVersion_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithUnsupportedVersion_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -132,16 +131,16 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Contains("Unsupported message version: 2.0", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).Contains("Unsupported message version: 2.0");
     }
 
     #endregion
 
     #region JobId Tests
 
-    [Fact]
-    public void Validate_WithNullJobId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithNullJobId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -155,12 +154,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("JobId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("JobId is required");
     }
 
-    [Fact]
-    public void Validate_WithEmptyJobId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithEmptyJobId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -174,12 +173,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("JobId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("JobId is required");
     }
 
-    [Fact]
-    public void Validate_WithWhitespaceJobId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithWhitespaceJobId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -193,16 +192,16 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("JobId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("JobId is required");
     }
 
     #endregion
 
     #region CorrelationId Tests
 
-    [Fact]
-    public void Validate_WithNullCorrelationId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithNullCorrelationId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -216,12 +215,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("CorrelationId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("CorrelationId is required");
     }
 
-    [Fact]
-    public void Validate_WithEmptyCorrelationId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithEmptyCorrelationId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -235,12 +234,12 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("CorrelationId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("CorrelationId is required");
     }
 
-    [Fact]
-    public void Validate_WithWhitespaceCorrelationId_ReturnsFalse()
+    [Test]
+    public async Task Validate_WithWhitespaceCorrelationId_ReturnsFalse()
     {
         // Arrange
         ProcessDocumentMessage message = new()
@@ -254,8 +253,8 @@ public class MessageValidatorTests
         (bool isValid, string? errorMessage) = MessageValidator.Validate(message);
 
         // Assert
-        Assert.False(isValid);
-        Assert.Equal("CorrelationId is required", errorMessage);
+        await Assert.That(isValid).IsFalse();
+        await Assert.That(errorMessage).IsEqualTo("CorrelationId is required");
     }
 
     #endregion
