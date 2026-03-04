@@ -55,7 +55,7 @@ public sealed partial class PreprocessStageActivity : IJobStageActivity
         try
         {
             // Extract OCR blob path from metadata
-            if (!context.Metadata.TryGetValue("ocrBlobPath", out var ocrBlobPathObj) ||
+            if (!context.Metadata.TryGetValue(StageMetadataKeys.OcrBlobPath, out var ocrBlobPathObj) ||
                 ocrBlobPathObj is not string ocrBlobPath)
             {
                 LogOcrBlobPathNotFound(_logger, context.Job.JobId, context.CorrelationId);
@@ -93,7 +93,7 @@ public sealed partial class PreprocessStageActivity : IJobStageActivity
             var totalWordCount = pages.Sum(p => p.WordCount);
 
             // Get tenant ID from metadata
-            var tenantId = context.Metadata.TryGetValue("TenantId", out var tenantIdObj)
+            var tenantId = context.Metadata.TryGetValue(StageMetadataKeys.TenantId, out var tenantIdObj)
                 ? tenantIdObj.ToString()
                 : "default";
 
@@ -146,7 +146,7 @@ public sealed partial class PreprocessStageActivity : IJobStageActivity
                 output: new { PreprocessCompleted = true },
                 metadata: new Dictionary<string, object>
                 {
-                    ["preprocessBlobPath"] = uploadedBlobPath,
+                    [StageMetadataKeys.PreprocessBlobPath] = uploadedBlobPath,
                     ["pageCount"] = pages.Count,
                     ["totalWordCount"] = totalWordCount,
                     ["totalTables"] = tables.Count,

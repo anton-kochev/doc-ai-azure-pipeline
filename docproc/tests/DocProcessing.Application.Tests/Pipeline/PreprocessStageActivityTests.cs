@@ -40,8 +40,7 @@ public sealed class PreprocessStageActivityTests
             OutputBlobContainer = "preprocess-results",
             EnableUnicodeNormalization = true,
             EnableWhitespaceCleanup = true,
-            ConvertTablesToStructured = true,
-            MaxChunkSize = 512
+            ConvertTablesToStructured = true
         };
 
         _activity = new PreprocessStageActivity(
@@ -91,7 +90,7 @@ public sealed class PreprocessStageActivityTests
         await Assert.That(result.IsSuccess).IsTrue();
         await Assert.That(result.Output).IsNotNull();
         await Assert.That(result.Metadata).IsNotNull();
-        await Assert.That(result.Metadata.Keys).Contains("preprocessBlobPath");
+        await Assert.That(result.Metadata.Keys).Contains(StageMetadataKeys.PreprocessBlobPath);
 
         _mockStorageService.Verify(
             x => x.DownloadJsonAsync<OcrResult>("ocr-results", ocrBlobPath, It.IsAny<CancellationToken>()),
@@ -248,8 +247,8 @@ public sealed class PreprocessStageActivityTests
 
         // Assert
         await Assert.That(result.IsSuccess).IsTrue();
-        await Assert.That(result.Metadata.Keys).Contains("preprocessBlobPath");
-        await Assert.That(result.Metadata["preprocessBlobPath"]).IsEqualTo(expectedBlobPath);
+        await Assert.That(result.Metadata.Keys).Contains(StageMetadataKeys.PreprocessBlobPath);
+        await Assert.That(result.Metadata[StageMetadataKeys.PreprocessBlobPath]).IsEqualTo(expectedBlobPath);
         await Assert.That(result.Metadata.Keys).Contains("pageCount");
         await Assert.That(result.Metadata.Keys).Contains("totalWordCount");
     }
@@ -1191,7 +1190,7 @@ public sealed class PreprocessStageActivityTests
 
         var metadata = new Dictionary<string, object>
         {
-            ["ocrBlobPath"] = ocrBlobPath
+            [StageMetadataKeys.OcrBlobPath] = ocrBlobPath
         };
 
         var context = new StageContext(
@@ -1374,12 +1373,12 @@ public sealed class PreprocessStageActivityTests
 
         if (ocrBlobPath != null)
         {
-            metadata["ocrBlobPath"] = ocrBlobPath;
+            metadata[StageMetadataKeys.OcrBlobPath] = ocrBlobPath;
         }
 
         if (tenantId != null)
         {
-            metadata["TenantId"] = tenantId;
+            metadata[StageMetadataKeys.TenantId] = tenantId;
         }
 
         return new StageContext(

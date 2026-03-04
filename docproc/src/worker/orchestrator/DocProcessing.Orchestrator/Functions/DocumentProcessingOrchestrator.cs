@@ -1,4 +1,5 @@
 using DocProcessing.Application.Interfaces;
+using DocProcessing.Application.Pipeline;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -11,9 +12,9 @@ namespace DocProcessing.Orchestrator.Functions;
 
 /// <summary>
 /// Durable orchestrator for document processing workflow.
-/// Executes all processing stages in sequence: OCR → Preprocess → Embed → Extract → Validate → Persist → Notify.
+/// Executes all processing stages in sequence: OCR → Preprocess → Chunk → Embed → Extract → Validate → Persist → Notify.
 /// </summary>
-public class DocumentProcessingOrchestrator
+public sealed class DocumentProcessingOrchestrator
 {
     /// <summary>
     /// Defines the sequence of processing stages to execute.
@@ -22,6 +23,7 @@ public class DocumentProcessingOrchestrator
     [
         ProcessJobStage.OCR,
         ProcessJobStage.Preprocess,
+        ProcessJobStage.Chunk,
         ProcessJobStage.Embed,
         ProcessJobStage.Extract,
         ProcessJobStage.Validate,
@@ -70,6 +72,18 @@ public class DocumentProcessingOrchestrator
             await context.CallActivityAsync(nameof(StartJob), jobId);
 
             // Step 4: Execute all stages in sequence
+            // Accumulate stage output metadata across stages so each stage
+            // can access outputs from previous stages (e.g., preprocessBlobPath)
+            Dictionary<string, object> accumulatedMetadata = new()
+            {
+                [StageMetadataKeys.JobId] = jobId.ToString(),
+                [StageMetadataKeys.DocumentId] = document.DocumentId.ToString(),
+                [StageMetadataKeys.BlobContainer] = document.BlobContainer,
+                [StageMetadataKeys.BlobPath] = document.BlobPath,
+                [StageMetadataKeys.TenantId] = document.TenantId?.ToString() ?? string.Empty,
+                [StageMetadataKeys.ExtractionProfile] = input.ExtractionProfile ?? string.Empty
+            };
+
             foreach (ProcessJobStage stage in ProcessingStages)
             {
                 logger.LogInformation(
@@ -80,24 +94,22 @@ public class DocumentProcessingOrchestrator
                 // Update stage in job representation
                 job = job with { Stage = stage };
 
-                // Build stage context using data from the database
-                Dictionary<string, object> metadata = new()
-                {
-                    ["JobId"] = jobId.ToString(),
-                    ["DocumentId"] = document.DocumentId.ToString(),
-                    ["BlobContainer"] = document.BlobContainer,
-                    ["BlobPath"] = document.BlobPath,
-                    ["TenantId"] = document.TenantId?.ToString() ?? string.Empty,
-                    ["ExtractionProfile"] = input.ExtractionProfile ?? string.Empty
-                };
-
-                StageContext stageContext = new(job, metadata, input.CorrelationId);
+                StageContext stageContext = new(job, accumulatedMetadata, input.CorrelationId);
 
                 // Call the appropriate stage activity
                 string activityName = GetActivityNameForStage(stage);
                 StageResult result = await context.CallActivityAsync<StageResult>(
                     activityName,
                     stageContext);
+
+                // Merge stage output metadata into accumulated metadata for subsequent stages
+                if (result.IsSuccess && result.Metadata is { Count: > 0 })
+                {
+                    foreach (KeyValuePair<string, object> kvp in result.Metadata)
+                    {
+                        accumulatedMetadata[kvp.Key] = kvp.Value;
+                    }
+                }
 
                 // Check stage result
                 if (!result.IsSuccess)
@@ -257,6 +269,7 @@ public class DocumentProcessingOrchestrator
         {
             ProcessJobStage.OCR => nameof(OcrStageExecutor),
             ProcessJobStage.Preprocess => nameof(PreprocessStageExecutor),
+            ProcessJobStage.Chunk => nameof(ChunkStageExecutor),
             ProcessJobStage.Embed => nameof(EmbedStageExecutor),
             ProcessJobStage.Extract => nameof(ExtractStageExecutor),
             ProcessJobStage.Validate => nameof(ValidateStageExecutor),

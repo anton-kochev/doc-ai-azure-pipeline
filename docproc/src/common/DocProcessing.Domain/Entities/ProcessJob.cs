@@ -176,6 +176,11 @@ public enum ProcessJobStage
     Preprocess,
 
     /// <summary>
+    /// Document chunking stage — splits normalized text into semantic chunks for embeddings.
+    /// </summary>
+    Chunk,
+
+    /// <summary>
     /// Document embedding generation stage.
     /// </summary>
     Embed,

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Models.OCR;
+using DocProcessing.Application.Pipeline;
 using DocProcessing.Domain.Entities;
 using DocProcessing.EndToEnd.Tests.Builders;
 using DocProcessing.EndToEnd.Tests.Fixtures;
@@ -158,7 +159,30 @@ public class HappyPathFlowTests
         var pipelineResult = await simulator.RunAsync(uploadResult.JobId);
 
         // Assert — documents the data-flow contract: ocrBlobPath is forwarded
-        await Assert.That(pipelineResult.AccumulatedMetadata.ContainsKey("ocrBlobPath")).IsTrue();
+        await Assert.That(pipelineResult.AccumulatedMetadata.ContainsKey(StageMetadataKeys.OcrBlobPath)).IsTrue();
+    }
+
+    [Test]
+    public async Task FullPipeline_ChunkBlobPathPresentInMetadataAfterChunkStage()
+    {
+        // Arrange
+        using var fixture = new EndToEndTestFixture();
+        var uploadResult = await UploadTestDocument(fixture);
+
+        SetupOcrMock(fixture, uploadResult.DocumentId, uploadResult.JobId);
+
+        var simulator = new PipelineSimulator(
+            fixture.ProcessJobService,
+            fixture.ActivityFactory,
+            fixture.DbContext,
+            fixture.TimeProvider);
+
+        // Act
+        var pipelineResult = await simulator.RunAsync(uploadResult.JobId);
+
+        // Assert — chunkBlobPath is forwarded through the pipeline
+        await Assert.That(pipelineResult.IsSuccess).IsTrue();
+        await Assert.That(pipelineResult.AccumulatedMetadata.ContainsKey(StageMetadataKeys.ChunkBlobPath)).IsTrue();
     }
 
     [Test]
@@ -170,6 +194,7 @@ public class HappyPathFlowTests
         {
             ProcessJobStage.OCR,
             ProcessJobStage.Preprocess,
+            ProcessJobStage.Chunk,
             ProcessJobStage.Embed,
             ProcessJobStage.Extract,
             ProcessJobStage.Validate,

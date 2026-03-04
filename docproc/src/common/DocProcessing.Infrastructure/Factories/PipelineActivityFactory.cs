@@ -11,7 +11,8 @@ public sealed class PipelineActivityFactory : IPipelineActivityFactory
     
     public PipelineActivityFactory(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        _serviceProvider = serviceProvider;
     }
     
     public IJobStageActivity Create(ProcessJobStage stage)
@@ -20,6 +21,7 @@ public sealed class PipelineActivityFactory : IPipelineActivityFactory
         {
             ProcessJobStage.OCR => _serviceProvider.GetRequiredService<OcrStageActivity>(),
             ProcessJobStage.Preprocess => _serviceProvider.GetRequiredService<PreprocessStageActivity>(),
+            ProcessJobStage.Chunk => _serviceProvider.GetRequiredService<ChunkStageActivity>(),
             ProcessJobStage.Embed => _serviceProvider.GetRequiredService<EmbedStageActivity>(),
             ProcessJobStage.Extract => _serviceProvider.GetRequiredService<ExtractStageActivity>(),
             ProcessJobStage.Validate => _serviceProvider.GetRequiredService<ValidateStageActivity>(),

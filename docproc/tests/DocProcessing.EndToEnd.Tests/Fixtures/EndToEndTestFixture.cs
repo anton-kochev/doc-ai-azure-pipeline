@@ -3,6 +3,7 @@ using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Pipeline;
 using DocProcessing.Application.Services;
 using DocProcessing.Application.Services.OCR;
+using DocProcessing.Application.Services.Chunking;
 using DocProcessing.Application.Services.Preprocessing;
 using DocProcessing.EndToEnd.Tests.Builders;
 using DocProcessing.EndToEnd.Tests.Helpers;
@@ -72,6 +73,13 @@ public sealed class EndToEndTestFixture : IDisposable
             EnableWhitespaceCleanup = true,
             ConvertTablesToStructured = true
         }));
+        services.AddSingleton(Options.Create(new ChunkingOptions
+        {
+            OutputBlobContainer = "chunk-results",
+            MaxChunkSize = 512,
+            OverlapTokens = 50,
+            TokenEstimationFactor = 1.3
+        }));
 
         // Real application services
         services.AddSingleton<IDocumentService, DocumentService>();
@@ -82,9 +90,13 @@ public sealed class EndToEndTestFixture : IDisposable
         services.AddSingleton<ITableConverter, TableConverter>();
         services.AddSingleton<IFieldParser, FieldParser>();
 
+        // Chunking services (real)
+        services.AddSingleton<IDocumentChunker, DocumentChunker>();
+
         // Pipeline stage activities (real)
         services.AddSingleton<OcrStageActivity>();
         services.AddSingleton<PreprocessStageActivity>();
+        services.AddSingleton<ChunkStageActivity>();
         services.AddSingleton<EmbedStageActivity>();
         services.AddSingleton<ExtractStageActivity>();
         services.AddSingleton<ValidateStageActivity>();

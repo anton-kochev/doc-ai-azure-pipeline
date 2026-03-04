@@ -57,11 +57,11 @@ public sealed partial class OcrStageActivity : IJobStageActivity
             }
 
             // 2. Download document from blob storage
-            string? containerName = context.Metadata.TryGetValue("BlobContainer", out object? container)
+            string? containerName = context.Metadata.TryGetValue(StageMetadataKeys.BlobContainer, out object? container)
                 ? container.ToString()
                 : document.BlobContainer;
 
-            string? blobPath = context.Metadata.TryGetValue("BlobPath", out object? path)
+            string? blobPath = context.Metadata.TryGetValue(StageMetadataKeys.BlobPath, out object? path)
                 ? path.ToString()
                 : document.BlobPath;
 
@@ -80,7 +80,7 @@ public sealed partial class OcrStageActivity : IJobStageActivity
                 cancellationToken);
 
             // 4. Store full OCR results in blob storage
-            string tenantId = context.Metadata.TryGetValue("TenantId", out object? tid)
+            string tenantId = context.Metadata.TryGetValue(StageMetadataKeys.TenantId, out object? tid)
                 ? tid.ToString() ?? "default"
                 : "default";
 
@@ -120,7 +120,7 @@ public sealed partial class OcrStageActivity : IJobStageActivity
                 {
                     ["pageCount"] = ocrResult.Metadata.PageCount,
                     ["confidence"] = ocrResult.Metadata.OverallConfidence,
-                    ["ocrBlobPath"] = ocrBlobFullPath
+                    [StageMetadataKeys.OcrBlobPath] = ocrBlobFullPath
                 });
         }
         catch (Exception ex)

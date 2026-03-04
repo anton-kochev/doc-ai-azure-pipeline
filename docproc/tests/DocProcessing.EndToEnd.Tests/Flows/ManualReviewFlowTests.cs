@@ -1,4 +1,5 @@
 using DocProcessing.Application.Interfaces;
+using DocProcessing.Application.Pipeline;
 using DocProcessing.Domain.Entities;
 using DocProcessing.Domain.Exceptions;
 using DocProcessing.EndToEnd.Tests.Builders;
@@ -117,7 +118,7 @@ public class ManualReviewFlowTests
                 ocrCallCount++;
                 return StageResult.Success(metadata: new Dictionary<string, object>
                 {
-                    ["ocrBlobPath"] = "test/ocr-result.json"
+                    [StageMetadataKeys.OcrBlobPath] = "test/ocr-result.json"
                 });
             });
 

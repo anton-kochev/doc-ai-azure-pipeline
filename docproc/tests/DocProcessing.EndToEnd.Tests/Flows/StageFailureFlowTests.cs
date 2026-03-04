@@ -108,7 +108,7 @@ public class StageFailureFlowTests
             {
                 ["pageCount"] = 1,
                 ["confidence"] = 0.95
-                // Intentionally missing "ocrBlobPath"
+                // Intentionally missing StageMetadataKeys.OcrBlobPath
             }));
 
         fixture.ActivityFactory.Override(ProcessJobStage.OCR, mockOcrActivity.Object);

@@ -1,36 +1,37 @@
 # Short plan — checklist
 
-## Project Status Summary (Updated: 2025-12-28)
+## Project Status Summary (Updated: 2026-03-04)
 
-**Overall Progress:** ~55% Complete
+**Overall Progress:** ~50% Complete (9/20)
 
-### ✅ Completed (7/20)
+### ✅ Completed (9/20)
 
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
 - ProcessJob model & queueing (idempotency, Service Bus)
 - Orchestration & worker plumbing (Durable Functions, all stage executors)
+- **OCR/layout extraction** (Azure Document Intelligence integration complete)
+- **Pre-processing & normalization** (TextNormalizer, TableConverter, FieldParser — 65+ tests)
 - Monitoring, telemetry & observability (Application Insights, correlation IDs)
 - Retries, idempotency & resiliency (retry policies, DLQ)
-- Testing & quality (comprehensive test projects with 149+ tests, FakeLogger/TimeProvider)
-- **OCR/layout extraction** (Azure Document Intelligence integration complete)
+- Testing & quality (302 tests — 277 succeeded, 25 skipped)
 
-### 🟡 In Progress (7/20)
-- Pre-processing & normalization (executor exists, needs core logic)
-- Embeddings pipeline (executor exists, needs Azure OpenAI integration)
-- Prompting & structured extraction (executor exists, needs LLM implementation)
-- Validation & business rules (executor exists, needs validation logic)
-- Persistence & outbox (database exists, needs extraction results schema & outbox)
+### 🔜 Next Up — Core Pipeline Stages (6/20)
+
+1. **Chunking strategy** — semantic-aware chunker, chunk metadata, token count control
+2. Embeddings pipeline (executor exists, needs Azure OpenAI integration)
+3. RAG retrieval layer (vector search API, top-k chunk retrieval)
+4. Prompting & structured extraction (executor exists, needs LLM implementation)
+5. Validation & business rules (executor exists, needs validation logic)
+6. Persistence & outbox (database exists, needs extraction results schema & outbox)
+
+### 🟡 Supporting Features (5/20)
+
 - Human-in-the-loop UI (upload UI exists, needs review components)
 - Security, PII & compliance (Managed Identity done, needs Key Vault & PII redaction)
-- Runbook, docs & demo (CLAUDE.md exists, needs operational runbook)
-
-### ❌ Not Started (6/20)
-
-- Chunking strategy (semantic-aware chunker with metadata)
-- RAG retrieval layer (vector search API)
 - Cost controls & model-mix (cost tracking, model selection)
 - ModelOps & dataset improvements (correction pipeline, A/B testing)
+- Runbook, docs & demo (CLAUDE.md exists, needs operational runbook)
 
 ---
 
@@ -76,9 +77,9 @@
 
 ## ~~Pre-processing & normalization~~ ✅
 
-- Tasks: text normalization (whitespace, ligatures, Unicode normalization), table → CSV/JSON for numeric fields, date/currency normalization rules, handle multi-column layouts via coordinates.
+- ~~Tasks: text normalization (whitespace, ligatures, Unicode normalization), table → CSV/JSON for numeric fields, date/currency normalization rules, handle multi-column layouts via coordinates.~~
 
-- Acceptance: normalized text + structured table exports that preserve numeric formats.
+- ~~Acceptance: normalized text + structured table exports that preserve numeric formats.~~
 
 - **Status: COMPLETED** (2026-03-04) - TextNormalizer (whitespace/NFC/ligatures), TableConverter (CSV/JSON with escaping), FieldParser (date/currency/number parsing) all implemented and tested. PreprocessStageExecutor bug fixed (was discarding activity result). 65+ characterization tests with documented BUG/QUIRK comments. Known issues: TableConverter column span bug, 4-symbol-only currency support, US-first date ambiguity.
 
@@ -176,7 +177,7 @@
 
 - ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: COMPLETED** - Comprehensive test infrastructure with 3 test projects (DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests). 97+ unit tests for ProcessJobService covering idempotency (8 tests), GetOrCreateJob (13 tests), state transitions (StartProcessing: 10 tests, CompleteJob: 6 tests, FailJob: 9 tests). DocProcessing.TestUtilities provides FakeLogger, FakeTimeProvider for deterministic testing. All tests verify structured logging calls. Standardized test logging across all projects (commit 69cecaf). CI runs all tests on push. Golden dataset regression tests and E2E test harness remain as future enhancements.
+- **Status: COMPLETED** - 302 tests (277 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
 
 ## ModelOps & dataset improvements
 
@@ -232,18 +233,12 @@ See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracki
 - ✅ Concurrency race conditions with optimistic locking
 - ✅ CancellationToken support throughout async operations
 - ✅ Structured logging with LoggerMessage source generators
+- ✅ ManualReview state machine — 3 service methods, 3 activity functions, external event handling, 46 tests
+- ✅ Exception-based error handling — All 7 executors now propagate exceptions, boolean returns replaced by domain exceptions
 
-**Resolved:**
+**Pending:**
 
-- ✅ Concurrency race conditions with optimistic locking
-- ✅ CancellationToken support throughout async operations
-- ✅ Structured logging with LoggerMessage source generators
-- ✅ ManualReview state machine (completed) - 3 service methods, 3 activity functions, external event handling, 46 tests
-
-**Pending Priority Work:**
-
-1. **Critical**: Exception-based error handling to replace boolean returns (3-4 hours)
-2. **Medium**: Repository pattern for separation of concerns (8-10 hours)
+1. **Medium**: Repository pattern for separation of concerns
 
 ### Documentation & Tooling
 
@@ -256,8 +251,8 @@ See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracki
 
 ### Next Priorities
 
-1. **Complete OCR Integration** - Implement Azure Document Intelligence API calls
-2. **Implement Core Processing Logic** - Add business logic to Preprocess, Embed, Extract, Validate stages
-3. **Exception-Based Error Handling** - Replace boolean returns with domain exceptions (Critical technical debt)
-4. **ManualReview State Machine** - Complete workflow transitions for human-in-the-loop scenarios
-5. **Operational Runbook** - Document failure recovery procedures, DLQ handling, and troubleshooting steps
+1. **Chunking strategy** — Semantic-aware chunker between Preprocess and Embed stages
+2. **Embeddings pipeline** — Azure OpenAI embedding service, vector store integration
+3. **RAG retrieval layer** — Vector search API, top-k chunk retrieval with citations
+4. **Prompting & structured extraction** — LLM prompting with JSON schema, few-shot examples
+5. **Validation & business rules** — Field-level validators, confidence scoring, ManualReview flagging

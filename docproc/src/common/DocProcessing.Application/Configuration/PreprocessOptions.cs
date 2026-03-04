@@ -24,9 +24,4 @@ public sealed class PreprocessOptions
     /// Gets or sets whether to convert tables to structured format (JSON/CSV).
     /// </summary>
     public bool ConvertTablesToStructured { get; init; } = true;
-
-    /// <summary>
-    /// Gets or sets the maximum chunk size in tokens for future chunking operations.
-    /// </summary>
-    public int MaxChunkSize { get; init; } = 512;
 }

@@ -1,5 +1,6 @@
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Models;
+using DocProcessing.Application.Pipeline;
 using DocProcessing.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
@@ -9,11 +10,8 @@ namespace DocProcessing.EndToEnd.Tests.Helpers;
 /// <summary>
 /// Simulates the orchestrator's stage loop in-process.
 ///
-/// DOCUMENTED DIVERGENCE from production:
-/// The orchestrator (DocumentProcessingOrchestrator.cs:84-92) rebuilds metadata fresh
-/// from the Document record for each stage and does NOT forward stage output metadata.
-/// This simulator forwards stage output metadata between stages, which is the INTENDED
-/// behavior (production bug tracked separately).
+/// The orchestrator now accumulates stage output metadata across stages (fixed in this changeset),
+/// matching this simulator's forwarding behavior.
 /// </summary>
 public sealed class PipelineSimulator
 {
@@ -24,6 +22,7 @@ public sealed class PipelineSimulator
     [
         ProcessJobStage.OCR,
         ProcessJobStage.Preprocess,
+        ProcessJobStage.Chunk,
         ProcessJobStage.Embed,
         ProcessJobStage.Extract,
         ProcessJobStage.Validate,
@@ -91,9 +90,9 @@ public sealed class PipelineSimulator
 
             if (document is not null)
             {
-                metadata["BlobContainer"] = document.BlobContainer;
-                metadata["BlobPath"] = document.BlobPath;
-                metadata["TenantId"] = document.TenantId?.ToString() ?? "default";
+                metadata[StageMetadataKeys.BlobContainer] = document.BlobContainer;
+                metadata[StageMetadataKeys.BlobPath] = document.BlobPath;
+                metadata[StageMetadataKeys.TenantId] = document.TenantId?.ToString() ?? "default";
             }
 
             // Merge forwarded metadata from previous stages

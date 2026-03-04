@@ -68,9 +68,9 @@ public sealed class OcrStageActivityTests
                 ProcessJobStage.OCR),
             new Dictionary<string, object>
             {
-                ["TenantId"] = tenantId,
-                ["BlobPath"] = blobPath,
-                ["BlobContainer"] = "documents"
+                [StageMetadataKeys.TenantId] = tenantId,
+                [StageMetadataKeys.BlobPath] = blobPath,
+                [StageMetadataKeys.BlobContainer] = "documents"
             },
             $"correlation-{jobId}");
 
@@ -394,9 +394,9 @@ public sealed class OcrStageActivityTests
                 ProcessJobStage.OCR),
             new Dictionary<string, object>
             {
-                ["TenantId"] = tenantId,
-                ["BlobPath"] = blobPath,
-                ["BlobContainer"] = "documents"
+                [StageMetadataKeys.TenantId] = tenantId,
+                [StageMetadataKeys.BlobPath] = blobPath,
+                [StageMetadataKeys.BlobContainer] = "documents"
             },
             $"correlation-{jobId}");
     }
