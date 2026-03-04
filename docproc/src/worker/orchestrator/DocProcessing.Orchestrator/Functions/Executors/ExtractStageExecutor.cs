@@ -13,19 +13,15 @@ public sealed class ExtractStageExecutor
 {
     private readonly ILogger<ExtractStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
-    private readonly TimeProvider _timeProvider;
 
     public ExtractStageExecutor(
         ILogger<ExtractStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory,
-        TimeProvider timeProvider)
+        IPipelineActivityFactory pipelineActivityFactory)
     {
         _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
-        _timeProvider =
-            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(ExtractStageExecutor))]
@@ -40,39 +36,15 @@ public sealed class ExtractStageExecutor
             context.Job.JobId,
             context.CorrelationId);
 
-        try
-        {
-            // TODO: Implement extraction logic
-            // - Load extraction profile based on context.Job.ExtractionProfile
-            // - Apply extraction rules (regex, LLM-based, etc.)
-            // - Extract structured fields (e.g., invoice number, dates, amounts)
-            // - Store extracted data in structured format
-            
-            await _pipelineActivityFactory
-                .Create(ProcessJobStage.Extract)
-                .ExecuteAsync(context, cancellationToken);
+        var result = await _pipelineActivityFactory
+            .Create(ProcessJobStage.Extract)
+            .ExecuteAsync(context, cancellationToken);
 
-            _logger.LogInformation(
-                "Extract stage completed successfully for JobId: {JobId}",
-                context.Job.JobId);
+        _logger.LogInformation(
+            "Extract stage completed for JobId: {JobId}, Success: {IsSuccess}",
+            context.Job.JobId,
+            result.IsSuccess);
 
-            return StageResult.Success(
-                output: new { DataExtracted = true },
-                metadata: new Dictionary<string, object>
-                {
-                    ["CompletedAt"] = _timeProvider.GetUtcNow()
-                });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Extract stage failed for JobId: {JobId}",
-                context.Job.JobId);
-
-            return StageResult.Failure(
-                errorCode: "EXTRACT_ERROR",
-                errorMessage: ex.Message);
-        }
+        return result;
     }
 }

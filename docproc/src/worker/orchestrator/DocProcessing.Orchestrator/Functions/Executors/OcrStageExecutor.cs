@@ -13,19 +13,15 @@ public sealed class OcrStageExecutor
 {
     private readonly ILogger<OcrStageExecutor> _logger;
     private readonly IPipelineActivityFactory _pipelineActivityFactory;
-    private readonly TimeProvider _timeProvider;
 
     public OcrStageExecutor(
         ILogger<OcrStageExecutor> logger,
-        IPipelineActivityFactory pipelineActivityFactory,
-        TimeProvider timeProvider)
+        IPipelineActivityFactory pipelineActivityFactory)
     {
         _logger =
             logger ?? throw new ArgumentNullException(nameof(logger));
         _pipelineActivityFactory =
             pipelineActivityFactory ?? throw new ArgumentNullException(nameof(pipelineActivityFactory));
-        _timeProvider =
-            timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     [Function(nameof(OcrStageExecutor))]
@@ -36,45 +32,19 @@ public sealed class OcrStageExecutor
         ArgumentNullException.ThrowIfNull(context);
 
         _logger.LogInformation(
-            "Starting OCR stage. CorrelationId: {CorrelationId}, JobId: {JobId}",
-            context.CorrelationId,
-            context.Job.JobId);
+            "Starting OCR stage for JobId: {JobId}, CorrelationId: {CorrelationId}",
+            context.Job.JobId,
+            context.CorrelationId);
 
-        try
-        {
-            // TODO: Implement OCR logic
-            // - Retrieve document from blob storage
-            // - Call Azure Document Intelligence API
-            // - Extract text, tables, and structure
-            // - Store OCR results in metadata or temporary storage
+        var result = await _pipelineActivityFactory
+            .Create(ProcessJobStage.OCR)
+            .ExecuteAsync(context, cancellationToken);
 
-            await _pipelineActivityFactory
-                .Create(ProcessJobStage.OCR)
-                .ExecuteAsync(context, cancellationToken);
+        _logger.LogInformation(
+            "OCR stage completed for JobId: {JobId}, Success: {IsSuccess}",
+            context.Job.JobId,
+            result.IsSuccess);
 
-            _logger.LogInformation(
-                "OCR stage completed successfully. CorrelationId: {CorrelationId}, JobId: {JobId}",
-                context.CorrelationId,
-                context.Job.JobId);
-
-            return StageResult.Success(
-                output: new { TextExtracted = true },
-                metadata: new Dictionary<string, object>
-                {
-                    ["CompletedAt"] = _timeProvider.GetUtcNow()
-                });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "OCR stage failed. CorrelationId: {CorrelationId}, JobId: {JobId}",
-                context.CorrelationId,
-                context.Job.JobId);
-
-            return StageResult.Failure(
-                errorCode: "OCR_ERROR",
-                errorMessage: ex.Message);
-        }
+        return result;
     }
 }

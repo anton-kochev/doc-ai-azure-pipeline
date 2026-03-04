@@ -20,10 +20,10 @@ public sealed partial class TextNormalizer : ITextNormalizer
         ["\uFB06"] = "st",  // ﬆ
     };
 
-    [GeneratedRegex(@"\s+", RegexOptions.Compiled)]
+    [GeneratedRegex(@"\s+")]
     private static partial Regex MultipleWhitespaceRegex();
 
-    [GeneratedRegex(@"\n{3,}", RegexOptions.Compiled)]
+    [GeneratedRegex(@"\n{3,}")]
     private static partial Regex MultipleNewlinesRegex();
 
     /// <inheritdoc/>
