@@ -1,3 +1,4 @@
+[![Build and Test](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/build-and-test.yml)
 [![Api Azure Functions](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-api-functions.yml)
 [![Orchestrator Azure Functions](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/deploy-worker-orchestrator-functions.yml)
 [![Document Uploader](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml/badge.svg)](https://github.com/anton-kochev/doc-ai-azure-pipeline/actions/workflows/azure-static-web-apps-receiver.yml)
