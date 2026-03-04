@@ -12,7 +12,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: "docproc/src/api"
-  DOTNET_VERSION: "8.0.x"
+  DOTNET_VERSION: "10.0.x"
 
 jobs:
   build-and-deploy:
@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           pushd './docproc'
-          dotnet test --configuration Release --logger trx --results-directory ./TestResults
+          dotnet test --solution docproc.sln --configuration Release
           popd
 
       - name: "Resolve Project Dependencies Using Dotnet"
