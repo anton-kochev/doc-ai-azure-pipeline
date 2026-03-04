@@ -2,9 +2,9 @@
 
 ## Project Status Summary (Updated: 2026-03-04)
 
-**Overall Progress:** ~50% Complete (9/20)
+**Overall Progress:** ~55% Complete (10/20)
 
-### ✅ Completed (9/20)
+### ✅ Completed (10/20)
 
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
@@ -12,14 +12,14 @@
 - Orchestration & worker plumbing (Durable Functions, all stage executors)
 - **OCR/layout extraction** (Azure Document Intelligence integration complete)
 - **Pre-processing & normalization** (TextNormalizer, TableConverter, FieldParser — 65+ tests)
+- **Chunking strategy** (DocumentChunker with sentence-boundary splitting, 3 chunk types, overlap — 345 tests total)
 - Monitoring, telemetry & observability (Application Insights, correlation IDs)
 - Retries, idempotency & resiliency (retry policies, DLQ)
-- Testing & quality (302 tests — 277 succeeded, 25 skipped)
+- Testing & quality (345 tests — 320 succeeded, 25 skipped)
 
-### 🔜 Next Up — Core Pipeline Stages (6/20)
+### 🔜 Next Up — Core Pipeline Stages (5/20)
 
-1. **Chunking strategy** — semantic-aware chunker, chunk metadata, token count control
-2. Embeddings pipeline (executor exists, needs Azure OpenAI integration)
+1. Embeddings pipeline (executor exists, needs Azure OpenAI integration)
 3. RAG retrieval layer (vector search API, top-k chunk retrieval)
 4. Prompting & structured extraction (executor exists, needs LLM implementation)
 5. Validation & business rules (executor exists, needs validation logic)
@@ -57,7 +57,7 @@
 
 - ~~Acceptance: DB row created + message visible on queue; duplicate requests with same idempotency token are safely deduped.~~
 
-- **Status: COMPLETED** - ProcessJob entity with JobId, DocumentId, IdempotencyKey, CorrelationId, Status enum (Pending/Processing/Completed/Failed/ManualReview), Stage enum (Uploaded/OCR/Preprocess/Embed/Extract/Validate/Persist/Notify), EF migrations applied, Service Bus abstraction with simplified message schema, correlation ID tracking throughout pipeline. ProcessJobService has 97+ tests with comprehensive coverage including idempotency, state transitions, and concurrency control.
+- **Status: COMPLETED** - ProcessJob entity with JobId, DocumentId, IdempotencyKey, CorrelationId, Status enum (Pending/Processing/Completed/Failed/ManualReview), Stage enum (Uploaded/OCR/Preprocess/Chunk/Embed/Extract/Validate/Persist/Notify), EF migrations applied, Service Bus abstraction with simplified message schema, correlation ID tracking throughout pipeline. ProcessJobService has 97+ tests with comprehensive coverage including idempotency, state transitions, and concurrency control.
 
 ## ~~Orchestration & worker plumbing~~
 
@@ -83,13 +83,13 @@
 
 - **Status: COMPLETED** (2026-03-04) - TextNormalizer (whitespace/NFC/ligatures), TableConverter (CSV/JSON with escaping), FieldParser (date/currency/number parsing) all implemented and tested. PreprocessStageExecutor bug fixed (was discarding activity result). 65+ characterization tests with documented BUG/QUIRK comments. Known issues: TableConverter column span bug, 4-symbol-only currency support, US-first date ambiguity.
 
-## Chunking strategy
+## ~~Chunking strategy~~ ✅
 
-- Tasks: design semantic-aware chunker (keep sentences/tables intact, attach coords & source IDs), compute chunk metadata (start/end offsets, sourceId).
+- ~~Tasks: design semantic-aware chunker (keep sentences/tables intact, attach coords & source IDs), compute chunk metadata (start/end offsets, sourceId).~~
 
-- Acceptance: search chunks are sized to control token count and each chunk contains sourceId + offsets.
+- ~~Acceptance: search chunks are sized to control token count and each chunk contains sourceId + offsets.~~
 
-- **Status: NOT STARTED** - No chunking logic found. Should be implemented as part of preprocess or as separate stage before embedding.
+- **Status: COMPLETED** (2026-03-04) - DocumentChunker with sentence-boundary splitting (regex-based), 3 chunk types (Text, Table, FormField), configurable max chunk size (512 tokens default), overlap (50 tokens default), token estimation factor (1.3x). ChunkStageActivity, ChunkStageExecutor, StageMetadataKeys centralized constants. Full metadata tracking: page numbers, character offsets, source block lineage, token counts. Models: DocumentChunk (sealed record), ChunkMetadata, ChunkResult, ChunkType enum (Domain layer). 345 total tests (320 succeeded, 25 skipped). Business logic documented in `docs/business-logic/document-chunking.md`.
 
 ## Embeddings pipeline
 
@@ -177,7 +177,7 @@
 
 - ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: COMPLETED** - 302 tests (277 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
+- **Status: COMPLETED** - 345 tests (320 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
 
 ## ModelOps & dataset improvements
 
@@ -251,8 +251,8 @@ See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracki
 
 ### Next Priorities
 
-1. **Chunking strategy** — Semantic-aware chunker between Preprocess and Embed stages
-2. **Embeddings pipeline** — Azure OpenAI embedding service, vector store integration
-3. **RAG retrieval layer** — Vector search API, top-k chunk retrieval with citations
-4. **Prompting & structured extraction** — LLM prompting with JSON schema, few-shot examples
-5. **Validation & business rules** — Field-level validators, confidence scoring, ManualReview flagging
+1. **Embeddings pipeline** — Azure OpenAI embedding service, vector store integration
+2. **RAG retrieval layer** — Vector search API, top-k chunk retrieval with citations
+3. **Prompting & structured extraction** — LLM prompting with JSON schema, few-shot examples
+4. **Validation & business rules** — Field-level validators, confidence scoring, ManualReview flagging
+5. **Persistence & outbox** — Extraction results schema, audit trail, outbox pattern
