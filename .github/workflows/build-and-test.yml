@@ -1,0 +1,40 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docproc/src/common/**'
+      - 'docproc/tests/**'
+      - 'docproc/docproc.sln'
+      - '.github/workflows/build-and-test.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docproc/**'
+      - '.github/workflows/build-and-test.yml'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build
+        run: dotnet build docproc/docproc.sln --configuration Release
+
+      - name: Test
+        run: dotnet test docproc/docproc.sln --configuration Release --no-build
