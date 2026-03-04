@@ -6,9 +6,10 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <OutputType>Exe</OutputType>
 
         <IsPackable>false</IsPackable>
-        <IsTestProject>false</IsTestProject>
+        <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
     <!-- Enable analyzers -->
@@ -21,13 +22,19 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="10.3.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
-        <PackageReference Include="TUnit.Assertions" Version="1.18.21" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.3.0" />
+        <PackageReference Include="Moq" Version="4.20.72" />
+        <PackageReference Include="TUnit" Version="1.18.21" />
+        <PackageReference Include="coverlet.collector" Version="6.0.4">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\common\DocProcessing.Application\DocProcessing.Application.csproj" />
         <ProjectReference Include="..\..\src\common\DocProcessing.Infrastructure\DocProcessing.Infrastructure.csproj" />
+        <ProjectReference Include="..\DocProcessing.TestUtilities\DocProcessing.TestUtilities.csproj" />
     </ItemGroup>
 
 </Project>

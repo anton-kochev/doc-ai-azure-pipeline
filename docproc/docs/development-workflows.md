@@ -169,6 +169,11 @@ To add a new stage to the document processing pipeline:
    - Test error handling and retry scenarios
    - Verify telemetry and logging work correctly
 
+7. Update E2E tests:
+   - Add the new stage to `PipelineSimulator.Stages` in `tests/DocProcessing.EndToEnd.Tests/Helpers/PipelineSimulator.cs` if not already present
+   - Verify the guard test in `HappyPathFlowTests.PipelineSimulatorStages_MatchOrchestratorStageSequence` still passes
+   - Add stage-specific test scenarios in `Flows/` if the stage has meaningful logic (use `ControllableActivityFactory` to inject failures)
+
 ## 6. Local Development Setup
 
 First-time setup for local development:
@@ -307,3 +312,10 @@ To debug the complete document processing flow:
    - Log state transitions and stage changes
    - Log before and after external service calls
    - Use appropriate log levels (Debug/Information/Warning/Error)
+
+7. **Running E2E Integration Tests**:
+   - Run `dotnet test --project tests/DocProcessing.EndToEnd.Tests/` to verify pipeline flow
+   - Tests use real Application services with in-memory DB and mocked Azure services
+   - Use `ControllableActivityFactory` to inject failures at specific stages
+   - `PipelineSimulator` mirrors the orchestrator's stage sequence with metadata forwarding
+   - See `tests/README.md` for full architecture and test class details
