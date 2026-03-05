@@ -69,7 +69,7 @@ public sealed class StageResult
     /// <summary>
     /// Gets or sets the output data produced by the stage.
     /// </summary>
-    public object? Output { get; init; }
+    public Dictionary<string, object>? Output { get; init; }
 
     /// <summary>
     /// Gets or sets the error code if the stage failed.
@@ -92,7 +92,7 @@ public sealed class StageResult
     /// <param name="output">The output data produced by the stage.</param>
     /// <param name="metadata">Optional metadata about the execution.</param>
     /// <returns>A successful stage result.</returns>
-    public static StageResult Success(object? output = null, Dictionary<string, object>? metadata = null) =>
+    public static StageResult Success(Dictionary<string, object>? output = null, Dictionary<string, object>? metadata = null) =>
         new() { IsSuccess = true, Output = output, Metadata = metadata ?? new() };
 
     /// <summary>

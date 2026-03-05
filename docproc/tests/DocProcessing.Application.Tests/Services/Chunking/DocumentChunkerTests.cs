@@ -559,11 +559,11 @@ public sealed class DocumentChunkerTests
     [Test]
     public async Task ChunkDocument_TextChunks_SourceBlocksMappedCorrectly()
     {
-        // Arrange — two text blocks on page 1
+        // Arrange — two text blocks on page 1; page text uses "\n" separator (matching PreprocessStageActivity)
         var block0 = BuildTextBlock("First block content. With two sentences.", pageNumber: 1);
         var block1 = BuildTextBlock("Second block content. With two sentences.", pageNumber: 1);
         var page = BuildPage(1,
-            "First block content. With two sentences. Second block content. With two sentences.",
+            "First block content. With two sentences.\nSecond block content. With two sentences.",
             [block0, block1]);
         var input = new PreprocessResult
         {
@@ -589,6 +589,71 @@ public sealed class DocumentChunkerTests
                 await Assert.That(blockIndex).IsLessThan(2);
             }
         }
+    }
+
+    [Test]
+    public async Task ChunkDocument_MultipleBlocksWithNewlineSeparator_ProducesCorrectOffsets()
+    {
+        // Arrange — three blocks joined by "\n" separators (matching PreprocessStageActivity behavior)
+        var block0 = BuildTextBlock("Alpha block.", pageNumber: 1);
+        var block1 = BuildTextBlock("Beta block.", pageNumber: 1);
+        var block2 = BuildTextBlock("Gamma block.", pageNumber: 1);
+        // page.NormalizedText = string.Join("\n", blockTexts) in PreprocessStageActivity
+        var pageText = "Alpha block.\nBeta block.\nGamma block.";
+        var page = BuildPage(1, pageText, [block0, block1, block2]);
+        var input = new PreprocessResult
+        {
+            DocumentId = Guid.NewGuid(),
+            JobId = Guid.NewGuid(),
+            Pages = [page],
+            Metadata = DefaultMetadata(pageCount: 1, totalWordCount: 6)
+        };
+
+        // Act — large MaxChunkSize so everything fits in one chunk
+        var (chunks, _) = _sut.ChunkDocument(input, DefaultOptions(maxChunkSize: 200, overlapTokens: 0));
+
+        // Assert — the single text chunk should span the entire page text
+        var textChunks = chunks.Where(c => c.ChunkType == ChunkType.Text).ToList();
+        await Assert.That(textChunks).Count().IsEqualTo(1);
+
+        var chunk = textChunks[0];
+        await Assert.That(chunk.Content).IsEqualTo(pageText);
+        await Assert.That(chunk.SourceBlocks).IsNotNull();
+        // All 3 blocks should be referenced
+        await Assert.That(chunk.SourceBlocks!.Count).IsEqualTo(3);
+        await Assert.That(chunk.SourceBlocks).Contains(0);
+        await Assert.That(chunk.SourceBlocks).Contains(1);
+        await Assert.That(chunk.SourceBlocks).Contains(2);
+    }
+
+    [Test]
+    public async Task ChunkDocument_EmptyBlockBetweenNonEmpty_OffsetsStillAlign()
+    {
+        // Arrange — empty block between two non-empty blocks
+        var block0 = BuildTextBlock("First.", pageNumber: 1);
+        var block1 = BuildTextBlock("", pageNumber: 1);   // empty block
+        var block2 = BuildTextBlock("Third.", pageNumber: 1);
+        // string.Join("\n", ["First.", "", "Third."]) = "First.\n\nThird."
+        var pageText = "First.\n\nThird.";
+        var page = BuildPage(1, pageText, [block0, block1, block2]);
+        var input = new PreprocessResult
+        {
+            DocumentId = Guid.NewGuid(),
+            JobId = Guid.NewGuid(),
+            Pages = [page],
+            Metadata = DefaultMetadata(pageCount: 1, totalWordCount: 2)
+        };
+
+        // Act
+        var (chunks, _) = _sut.ChunkDocument(input, DefaultOptions(maxChunkSize: 200, overlapTokens: 0));
+
+        // Assert — chunk content matches the full page text
+        var textChunks = chunks.Where(c => c.ChunkType == ChunkType.Text).ToList();
+        await Assert.That(textChunks).Count().IsEqualTo(1);
+        await Assert.That(textChunks[0].Content).IsEqualTo(pageText);
+        // All 3 blocks should be referenced (including the empty one, which has zero-length range)
+        await Assert.That(textChunks[0].SourceBlocks).IsNotNull();
+        await Assert.That(textChunks[0].SourceBlocks!.Count).IsEqualTo(3);
     }
 
     [Test]

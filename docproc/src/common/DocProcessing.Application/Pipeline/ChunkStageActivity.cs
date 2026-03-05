@@ -19,6 +19,7 @@ public sealed partial class ChunkStageActivity : IJobStageActivity
     private readonly ILogger<ChunkStageActivity> _logger;
     private readonly IStorageService _storageService;
     private readonly ChunkingOptions _options;
+    private readonly PreprocessOptions _preprocessOptions;
     private readonly TimeProvider _timeProvider;
     private readonly IDocumentChunker _documentChunker;
 
@@ -29,18 +30,21 @@ public sealed partial class ChunkStageActivity : IJobStageActivity
         ILogger<ChunkStageActivity> logger,
         IStorageService storageService,
         IOptions<ChunkingOptions> options,
+        IOptions<PreprocessOptions> preprocessOptions,
         TimeProvider timeProvider,
         IDocumentChunker documentChunker)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(storageService);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(preprocessOptions);
         ArgumentNullException.ThrowIfNull(timeProvider);
         ArgumentNullException.ThrowIfNull(documentChunker);
 
         _logger = logger;
         _storageService = storageService;
         _options = options.Value;
+        _preprocessOptions = preprocessOptions.Value;
         _timeProvider = timeProvider;
         _documentChunker = documentChunker;
     }
@@ -68,7 +72,7 @@ public sealed partial class ChunkStageActivity : IJobStageActivity
 
             // Download preprocess result from blob storage
             PreprocessResult? preprocessResult = await _storageService.DownloadJsonAsync<PreprocessResult>(
-                "preprocess-results",
+                _preprocessOptions.OutputBlobContainer,
                 preprocessBlobPath,
                 cancellationToken);
 
@@ -125,7 +129,7 @@ public sealed partial class ChunkStageActivity : IJobStageActivity
                 stopwatch.ElapsedMilliseconds);
 
             return StageResult.Success(
-                output: new { ChunkCompleted = true },
+                output: null,
                 metadata: new Dictionary<string, object>
                 {
                     [StageMetadataKeys.ChunkBlobPath] = uploadedBlobPath,

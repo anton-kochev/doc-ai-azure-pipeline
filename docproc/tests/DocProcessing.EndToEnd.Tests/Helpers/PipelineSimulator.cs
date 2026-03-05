@@ -146,9 +146,9 @@ public sealed class PipelineSimulator
             // Some activities (e.g. OcrStageActivity) put data in Output as a Dictionary,
             // while others (e.g. PreprocessStageActivity) use the Metadata property.
             // We merge both to forward all stage output data.
-            if (result.Output is Dictionary<string, object> outputDict)
+            if (result.Output is { Count: > 0 })
             {
-                foreach (var kvp in outputDict)
+                foreach (var kvp in result.Output)
                 {
                     accumulatedMetadata[kvp.Key] = kvp.Value;
                 }

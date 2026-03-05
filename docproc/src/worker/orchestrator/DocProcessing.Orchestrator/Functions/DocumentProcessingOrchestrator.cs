@@ -102,12 +102,26 @@ public sealed class DocumentProcessingOrchestrator
                     activityName,
                     stageContext);
 
-                // Merge stage output metadata into accumulated metadata for subsequent stages
-                if (result.IsSuccess && result.Metadata is { Count: > 0 })
+                // Merge stage output into accumulated metadata for subsequent stages.
+                // Some activities (e.g. OcrStageActivity) put data in Output as a Dictionary,
+                // while others (e.g. PreprocessStageActivity) use the Metadata property.
+                // Merge Output first, then Metadata, so Metadata can override Output keys.
+                if (result.IsSuccess)
                 {
-                    foreach (KeyValuePair<string, object> kvp in result.Metadata)
+                    if (result.Output is { Count: > 0 })
                     {
-                        accumulatedMetadata[kvp.Key] = kvp.Value;
+                        foreach (KeyValuePair<string, object> kvp in result.Output)
+                        {
+                            accumulatedMetadata[kvp.Key] = kvp.Value;
+                        }
+                    }
+
+                    if (result.Metadata is { Count: > 0 })
+                    {
+                        foreach (KeyValuePair<string, object> kvp in result.Metadata)
+                        {
+                            accumulatedMetadata[kvp.Key] = kvp.Value;
+                        }
                     }
                 }
 

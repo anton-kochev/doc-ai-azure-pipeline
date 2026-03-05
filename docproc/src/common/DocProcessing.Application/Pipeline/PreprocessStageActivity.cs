@@ -143,7 +143,7 @@ public sealed partial class PreprocessStageActivity : IJobStageActivity
                 stopwatch.ElapsedMilliseconds);
 
             return StageResult.Success(
-                output: new { PreprocessCompleted = true },
+                output: null,
                 metadata: new Dictionary<string, object>
                 {
                     [StageMetadataKeys.PreprocessBlobPath] = uploadedBlobPath,

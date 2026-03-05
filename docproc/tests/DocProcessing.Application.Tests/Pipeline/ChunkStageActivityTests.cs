@@ -21,6 +21,7 @@ public sealed class ChunkStageActivityTests
     private readonly Mock<IDocumentChunker> _mockDocumentChunker;
     private readonly FakeTimeProvider _timeProvider;
     private readonly ChunkingOptions _options;
+    private readonly PreprocessOptions _preprocessOptions;
     private readonly ChunkStageActivity _activity;
 
     public ChunkStageActivityTests()
@@ -39,10 +40,16 @@ public sealed class ChunkStageActivityTests
             TokenEstimationFactor = 1.3
         };
 
+        _preprocessOptions = new PreprocessOptions
+        {
+            OutputBlobContainer = "preprocess-results"
+        };
+
         _activity = new ChunkStageActivity(
             _logger,
             _mockStorageService.Object,
             Options.Create(_options),
+            Options.Create(_preprocessOptions),
             _timeProvider,
             _mockDocumentChunker.Object);
     }
@@ -81,7 +88,7 @@ public sealed class ChunkStageActivityTests
 
         // Assert
         await Assert.That(result.IsSuccess).IsTrue();
-        await Assert.That(result.Output).IsNotNull();
+        await Assert.That(result.Output).IsNull();
     }
 
     [Test]
@@ -410,6 +417,58 @@ public sealed class ChunkStageActivityTests
     }
 
     #endregion
+
+    [Test]
+    public async Task ExecuteAsync_UsesPreprocessOptionsContainer_WhenDownloading()
+    {
+        // Arrange
+        var customPreprocessOptions = new PreprocessOptions
+        {
+            OutputBlobContainer = "custom-preprocess-container"
+        };
+        var activity = new ChunkStageActivity(
+            _logger,
+            _mockStorageService.Object,
+            Options.Create(_options),
+            Options.Create(customPreprocessOptions),
+            _timeProvider,
+            _mockDocumentChunker.Object);
+
+        var jobId = Guid.NewGuid();
+        var documentId = Guid.NewGuid();
+        var preprocessBlobPath = "tenant1/doc1/preprocess-result.json";
+        var context = CreateStageContext(jobId, documentId, "corr-custom-container", preprocessBlobPath);
+        var preprocessResult = CreateSamplePreprocessResult(jobId, documentId);
+
+        _mockStorageService
+            .Setup(x => x.DownloadJsonAsync<PreprocessResult>(
+                "custom-preprocess-container",
+                preprocessBlobPath,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(preprocessResult);
+
+        SetupDefaultChunkerResult(documentId, preprocessResult);
+
+        _mockStorageService
+            .Setup(x => x.UploadJsonAsync(
+                "chunk-results",
+                It.IsAny<string>(),
+                It.IsAny<ChunkResult>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("chunk-results/blob.json");
+
+        // Act
+        var result = await activity.ExecuteAsync(context, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.IsSuccess).IsTrue();
+        _mockStorageService.Verify(
+            x => x.DownloadJsonAsync<PreprocessResult>(
+                "custom-preprocess-container",
+                preprocessBlobPath,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 
     #region Guards and Properties Tests
 

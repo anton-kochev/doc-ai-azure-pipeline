@@ -595,6 +595,28 @@ Remaining testing tasks:
 - Structured logging with LoggerMessage source generators is already implemented in the codebase
 - Consider creating GitHub issues for each phase item for tracking
 
+## Deferred Findings from Chunking Pipeline Review (2026-03-05)
+
+### Medium Priority (deferred)
+
+- **Implicit separator coupling**: `DocumentChunker.cs:111` uses `searchFrom += 1` assuming `"\n"` from `PreprocessStageActivity`. Extract to shared constant (e.g. `BlockSeparator = "\n"`) to prevent future drift. Files: `DocumentChunker.cs`, `PreprocessStageActivity.cs`
+- **Output vs Metadata inconsistency**: OCR stage uses `Output` dict while other stages use `Metadata`. Now that `Output` is typed `Dictionary<string, object>?`, consider standardizing all stage output through `Metadata` and reserving `Output` for non-forwarded data
+- **TenantId fallback to "default"**: `ChunkStageActivity.cs:91-101` silently falls back to `"default"` tenant. In a multi-tenant system, consider failing instead of silently misrouting data
+
+### Low Priority (deferred)
+
+- **Test region organization**: `ChunkStageActivityTests.cs` — `ExecuteAsync_UsesPreprocessOptionsContainer_WhenDownloading` test sits outside any `#region`
+- **Missing multi-page + multi-block offset test**: `DocumentChunkerTests.cs` — no test covers block offsets across page boundary where `"\n\n"` page separator interacts with `"\n"` block separator
+- **No constructor null-guard tests**: Pre-existing gap across all stage activity tests — constructor `ArgumentNullException.ThrowIfNull` guards are not tested
+- **CreateStageContext missing TenantId**: Most chunk stage tests hit the `"default"` fallback path. Add at least one test with real `TenantId` that verifies the upload path
+
+### Nit (deferred)
+
+- **SentenceBoundaryRegex limitation**: `DocumentChunker.cs:16` — regex `(?<=[.!?])\s+(?=[A-Z\n])` won't split on sentences starting with numbers or non-Latin scripts. Pre-existing, not introduced by chunking changes
+- **Offset assertion granularity**: New offset tests verify block count but not exact numeric offset values. More precise assertions would make regressions easier to diagnose
+
+---
+
 ## Observations from Code Review (2025-10-30)
 
 ### Already Implemented

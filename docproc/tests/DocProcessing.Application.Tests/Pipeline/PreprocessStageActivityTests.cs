@@ -88,7 +88,7 @@ public sealed class PreprocessStageActivityTests
 
         // Assert
         await Assert.That(result.IsSuccess).IsTrue();
-        await Assert.That(result.Output).IsNotNull();
+        await Assert.That(result.Output).IsNull();
         await Assert.That(result.Metadata).IsNotNull();
         await Assert.That(result.Metadata.Keys).Contains(StageMetadataKeys.PreprocessBlobPath);
 

@@ -98,22 +98,28 @@ public sealed partial class DocumentChunker : IDocumentChunker
 
             int pageStart = sb.Length;
 
-            // Track block char ranges within the page text
-            // We derive block offsets by locating each block's NormalizedText within the page text
-            // starting from where we left off in the page, advancing greedily.
+            // Track block char ranges within the page text.
+            // Page text is constructed via string.Join("\n", allBlockTexts) in PreprocessStageActivity,
+            // so every block after the first is preceded by a "\n" separator.
             int searchFrom = pageStart;
-            foreach (var block in page.TextBlocks)
+            for (int blockIdx = 0; blockIdx < page.TextBlocks.Count; blockIdx++)
             {
+                var block = page.TextBlocks[blockIdx];
                 string blockText = block.NormalizedText;
+
+                // Account for "\n" separator between blocks
+                if (blockIdx > 0)
+                {
+                    searchFrom += 1;
+                }
+
                 if (string.IsNullOrEmpty(blockText))
                 {
-                    blockRanges.Add(new BlockRange(globalBlockIndex, pageStart, pageStart, page.PageNumber));
+                    blockRanges.Add(new BlockRange(globalBlockIndex, searchFrom, searchFrom, page.PageNumber));
                     globalBlockIndex++;
                     continue;
                 }
 
-                // We will know the absolute offset after we append the page text, so record
-                // the relative offset within the page text first, then adjust below.
                 blockRanges.Add(new BlockRange(globalBlockIndex, searchFrom, searchFrom + blockText.Length, page.PageNumber));
                 searchFrom += blockText.Length;
                 globalBlockIndex++;
