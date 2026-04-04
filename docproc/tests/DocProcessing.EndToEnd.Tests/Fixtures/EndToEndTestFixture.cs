@@ -1,6 +1,7 @@
 using DocProcessing.Application.Configuration;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Pipeline;
+using DocProcessing.Application.Pipeline.Options;
 using DocProcessing.Application.Services;
 using DocProcessing.Application.Services.OCR;
 using DocProcessing.Application.Services.Chunking;
@@ -29,6 +30,8 @@ public sealed class EndToEndTestFixture : IDisposable
     public InMemoryDbContext DbContext { get; }
     public InMemoryStorageService StorageService { get; }
     public Mock<IOcrService> OcrServiceMock { get; }
+    public Mock<IEmbeddingService> EmbeddingServiceMock { get; }
+    public Mock<IVectorStoreService> VectorStoreServiceMock { get; }
     public Mock<IMessagingService> MessagingServiceMock { get; }
     public FakeTimeProvider TimeProvider { get; }
     public ControllableActivityFactory ActivityFactory { get; }
@@ -41,7 +44,15 @@ public sealed class EndToEndTestFixture : IDisposable
         DbContext = new InMemoryDbContext();
         StorageService = new InMemoryStorageService();
         OcrServiceMock = new Mock<IOcrService>();
+        EmbeddingServiceMock = new Mock<IEmbeddingService>();
+        VectorStoreServiceMock = new Mock<IVectorStoreService>();
         MessagingServiceMock = new Mock<IMessagingService>();
+
+        // Default embedding mock: return dummy vectors for any input
+        EmbeddingServiceMock
+            .Setup(x => x.GenerateEmbeddingsAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<string> texts, CancellationToken _) =>
+                (IReadOnlyList<float[]>)texts.Select(_ => new float[] { 0.1f, 0.2f, 0.3f }).ToList());
         TimeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 3, 4, 10, 0, 0, System.TimeSpan.Zero));
 
         var services = new ServiceCollection();
@@ -54,6 +65,8 @@ public sealed class EndToEndTestFixture : IDisposable
 
         // External services (mocked)
         services.AddSingleton(OcrServiceMock.Object);
+        services.AddSingleton(EmbeddingServiceMock.Object);
+        services.AddSingleton(VectorStoreServiceMock.Object);
         services.AddSingleton(MessagingServiceMock.Object);
 
         // Time
@@ -79,6 +92,13 @@ public sealed class EndToEndTestFixture : IDisposable
             MaxChunkSize = 512,
             OverlapTokens = 50,
             TokenEstimationFactor = 1.3
+        }));
+        services.AddSingleton(Options.Create(new EmbeddingOptions
+        {
+            DeploymentName = "text-embedding-3-small",
+            Dimensions = 1536,
+            BatchSize = 100,
+            OutputBlobContainer = "embed-results"
         }));
 
         // Real application services

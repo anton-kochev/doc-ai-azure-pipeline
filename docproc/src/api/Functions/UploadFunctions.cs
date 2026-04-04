@@ -64,7 +64,7 @@ public sealed partial class UploadFunctions
         try
         {
             // Parse multipart form data
-            string? contentType = req.Headers.GetValues("Content-Type")?.FirstOrDefault();
+            string? contentType = req.Headers.GetValues("Content-Type").FirstOrDefault();
             if (string.IsNullOrEmpty(contentType) || !contentType.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase))
             {
                 LogInvalidContentType(contentType);
@@ -74,7 +74,7 @@ public sealed partial class UploadFunctions
                 {
                     error = "Invalid request",
                     message = "Content-Type must be multipart/form-data"
-                }));
+                }), cancellationToken);
 
                 return badRequestResponse;
             }
@@ -115,7 +115,7 @@ public sealed partial class UploadFunctions
                 {
                     error = "Invalid request",
                     message = "No file found in request"
-                }));
+                }), cancellationToken);
 
                 return badRequestResponse;
             }
@@ -134,7 +134,7 @@ public sealed partial class UploadFunctions
                 {
                     error = "Invalid file type",
                     message = $"File type '{fileData.ContentType}' is not allowed. Allowed types: {string.Join(", ", allowedTypes)}"
-                }));
+                }), cancellationToken);
 
                 return badRequestResponse;
             }
@@ -150,7 +150,7 @@ public sealed partial class UploadFunctions
                 {
                     error = "File too large",
                     message = $"File size {fileData.Data.Length / 1024.0 / 1024.0:F2} MB exceeds the maximum allowed size of {_fileUploadOptions.MaxFileSizeMB} MB"
-                }));
+                }), cancellationToken);
 
                 return badRequestResponse;
             }
@@ -164,7 +164,7 @@ public sealed partial class UploadFunctions
                 {
                     error = "Invalid file size",
                     message = "File size must be greater than 0"
-                }));
+                }), cancellationToken);
 
                 return badRequestResponse;
             }
@@ -173,7 +173,7 @@ public sealed partial class UploadFunctions
             byte[] sha256Hash;
             using (SHA256 sha256 = SHA256.Create())
             {
-                sha256Hash = await sha256.ComputeHashAsync(fileData.Data);
+                sha256Hash = await sha256.ComputeHashAsync(fileData.Data, cancellationToken);
                 fileData.Data.Position = 0; // Reset stream position for upload
             }
 

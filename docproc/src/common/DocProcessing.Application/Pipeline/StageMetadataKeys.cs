@@ -19,4 +19,10 @@ public static class StageMetadataKeys
     public const string TableChunks = "tableChunks";
     public const string TotalTokens = "totalTokens";
     public const string ProcessingDurationMs = "processingDurationMs";
+
+    // Embedding stage keys
+    public const string EmbedBlobPath = "embedBlobPath";
+    public const string EmbeddedChunks = "embeddedChunks";
+    public const string EmbeddingModel = "embeddingModel";
+    public const string EmbeddingDimensions = "embeddingDimensions";
 }

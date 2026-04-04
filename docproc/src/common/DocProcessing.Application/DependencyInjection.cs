@@ -1,6 +1,7 @@
 using DocProcessing.Application.Configuration;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Pipeline;
+using DocProcessing.Application.Pipeline.Options;
 using DocProcessing.Application.Services;
 using DocProcessing.Application.Services.OCR;
 using DocProcessing.Application.Services.Chunking;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         // Register configuration options
         services.Configure<ChunkingOptions>(configuration.GetSection("Chunking"));
         services.Configure<PreprocessOptions>(configuration.GetSection("Preprocess"));
+        services.Configure<EmbeddingOptions>(configuration.GetSection("Embedding"));
 
         return services;
     }
