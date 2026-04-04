@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Full Dev Environment" type="CompoundRunConfigurationType">
+    <toRun name="Docker Infra" type="ShConfigurationType" />
+    <toRun name="API Functions" type="ShConfigurationType" />
+    <toRun name="Worker Orchestrator" type="ShConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

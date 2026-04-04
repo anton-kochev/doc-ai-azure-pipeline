@@ -1,0 +1,24 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "docproc-local",
+        "Queues": [
+          {
+            "Name": "documents.process",
+            "Properties": {
+              "MaxSizeInMegabytes": 1024,
+              "DefaultMessageTimeToLive": "PT1H",
+              "LockDuration": "PT30S",
+              "DeadLetteringOnMessageExpiration": true,
+              "MaxDeliveryCount": 5
+            }
+          }
+        ]
+      }
+    ],
+    "Logging": {
+      "Type": "File"
+    }
+  }
+}

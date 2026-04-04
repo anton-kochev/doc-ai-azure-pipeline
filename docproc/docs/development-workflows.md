@@ -176,84 +176,80 @@ To add a new stage to the document processing pipeline:
 
 ## 6. Local Development Setup
 
-First-time setup for local development:
+### Quick Start
 
 1. **Install Prerequisites**:
-   - .NET 8.0 SDK
+   - .NET 10.0 SDK
    - Azure Functions Core Tools v4
-   - Node.js 18+ (for Angular client)
-   - Docker Desktop (optional, for containerized dependencies)
-   - Azure Storage Explorer or Azurite (for local storage)
+   - Docker Desktop
+   - Node.js 18+ (for Angular client, optional)
 
 2. **Clone and Build**:
 
    ```bash
    git clone <repo-url>
-   cd doc-ai-azure-pipeline
+   cd doc-ai-azure-pipeline/docproc
    dotnet build docproc.sln
    ```
 
-3. **Setup Local Azure Services**:
-
-   Option A - Use Azurite (Local Azure Storage Emulator):
+3. **Set up secrets** (first time only):
 
    ```bash
-   # Install Azurite
-   npm install -g azurite
-
-   # Start Azurite
-   azurite --silent --location ./azurite --debug ./azurite/debug.log
+   cp .env.example .env
+   # Edit .env and set your OPENAI_API_KEY
    ```
 
-   Option B - Use Docker Compose:
+   Then set the API key in `src/api/local.settings.json` and
+   `src/worker/orchestrator/DocProcessing.Orchestrator/local.settings.json`
+   under `Embedding__ApiKey`.
+
+4. **Start all infrastructure** (SQL Server, pgvector, Azurite, Service Bus):
 
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
-4. **Configure API Functions**:
-   - Copy `src/DocProcessing.Api/local.settings.json.example` to `local.settings.json`
-   - Update connection strings:
-
-     ```json
-     {
-       "IsEncrypted": false,
-       "Values": {
-         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-         "AzureStorage__ConnectionString": "UseDevelopmentStorage=true",
-         "ServiceBus__ConnectionString": "<local-or-dev-service-bus>",
-         "Database__ConnectionString": "<local-sql-connection>",
-         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
-       }
-     }
-     ```
-
-5. **Setup Database**:
+   Verify everything is healthy:
 
    ```bash
-   cd src/DocProcessing.Api
-   dotnet ef database update
+   docker compose ps
    ```
 
-6. **Configure Worker Orchestrator**:
-   - Copy `src/worker/orchestrator/Worker.Orchestrator/local.settings.json.example` to `local.settings.json`
-   - Use same connection strings as API
+   Database migrations run automatically on API startup (`ApplyMigrationsOnStartup: true`).
 
-7. **Run All Services**:
-
-   Terminal 1 - API Functions:
+5. **Run API and Worker** (separate terminals):
 
    ```bash
-   cd src/DocProcessing.Api
-   func start --port 7071
+   # Terminal 1 — API
+   cd src/api && func start --port 7071
+
+   # Terminal 2 — Worker
+   cd src/worker/orchestrator/DocProcessing.Orchestrator && func start --port 7072
    ```
 
-   Terminal 2 - Worker Orchestrator:
+6. **(Optional) Angular client**:
 
    ```bash
-   cd src/worker/orchestrator/Worker.Orchestrator
-   func start --port 7072
+   cd src/client/receiver-app && npm install && npm start
    ```
+
+### Infrastructure Services (docker-compose)
+
+| Service | Image | Port | Purpose |
+|---------|-------|------|---------|
+| SQL Server | `mcr.microsoft.com/mssql/server:2022-latest` | 1433 | Main DB (EF Core) |
+| pgvector | `pgvector/pgvector:pg17` | 5433 | Vector embeddings |
+| Azurite | `mcr.microsoft.com/azure-storage/azurite` | 10000-10002 | Blob/Queue/Table |
+| Service Bus Emulator | `mcr.microsoft.com/azure-messaging/servicebus-emulator` | 5672 | Message queue |
+
+Data is persisted in Docker volumes (`sqlserver_data`, `pgvector_data`, `azurite_data`).
+To reset all data: `docker compose down -v`.
+
+### Access Points
+
+- API Functions: http://localhost:7071
+- Worker Functions: http://localhost:7072
+- Angular Client: http://localhost:4200
 
    Terminal 3 - Angular Client:
 
