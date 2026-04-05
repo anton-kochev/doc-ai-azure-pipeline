@@ -5,7 +5,7 @@
 
 # Document AI Azure Pipeline (docproc)
 
-A serverless document processing pipeline built with .NET 8.0 Azure Functions and Angular 20.3. The system provides a complete document ingestion, processing, and management solution leveraging Azure cloud services including Blob Storage, Service Bus, SQL Database, and Durable Functions for orchestration.
+A serverless document processing pipeline built with .NET 10.0 Azure Functions and Angular 20.3. The system provides a complete document ingestion, processing, and management solution leveraging Azure cloud services including Blob Storage, Service Bus, SQL Database, and Durable Functions for orchestration.
 
 ## Overview
 
@@ -58,7 +58,7 @@ This project implements a microservices architecture for document AI processing 
 
 ## Prerequisites
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) (LTS version)
 - [Docker](https://www.docker.com/get-started) and Docker Compose (for local emulators)
 - Azure Storage Account (for blob storage features, or use local Azurite emulator)
@@ -382,7 +382,7 @@ The API integrates with:
 
 ### Backend
 
-- **.NET 8.0** - Target framework for all services
+- **.NET 10.0** - Target framework for all services
 - **Azure Functions v4** - Serverless compute platform for API and orchestration
 - **Azure Durable Functions** - Stateful orchestration workflows
 - **Entity Framework Core 9.0** - ORM for data access with SQL Server
@@ -589,7 +589,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 ### Previous Updates
 
 - ✅ **Clean Architecture** - Implemented Domain, Contracts, Application, and Infrastructure layers
-- ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions (.NET 8 isolated)
+- ✅ **Azure Functions v4** - Migrated API to serverless Azure Functions (.NET 10 isolated)
 - ✅ **Azure Durable Functions** - Added orchestration worker (DocProcessing.Orchestrator)
 - ✅ **Entity Framework Core 9.0** - SQL Server integration with migrations
 - ✅ **CI/CD Pipelines** - GitHub Actions workflows for automated deployment

@@ -1,10 +1,10 @@
 # Short plan — checklist
 
-## Project Status Summary (Updated: 2026-03-04)
+## Project Status Summary (Updated: 2026-04-05)
 
-**Overall Progress:** ~55% Complete (10/20)
+**Overall Progress:** ~60% Complete (11/20)
 
-### ✅ Completed (10/20)
+### ✅ Completed (11/20)
 
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
@@ -12,15 +12,15 @@
 - Orchestration & worker plumbing (Durable Functions, all stage executors)
 - **OCR/layout extraction** (Azure Document Intelligence integration complete)
 - **Pre-processing & normalization** (TextNormalizer, TableConverter, FieldParser — 65+ tests)
-- **Chunking strategy** (DocumentChunker with sentence-boundary splitting, 3 chunk types, overlap — 345 tests total)
+- **Chunking strategy** (DocumentChunker with sentence-boundary splitting, 3 chunk types, overlap)
+- **Embeddings pipeline** (OpenAI/Azure OpenAI, pgvector + Azure AI Search dual vector store — 20 embed tests)
 - Monitoring, telemetry & observability (Application Insights, correlation IDs)
 - Retries, idempotency & resiliency (retry policies, DLQ)
-- Testing & quality (345 tests — 320 succeeded, 25 skipped)
+- Testing & quality (372 tests — 347 succeeded, 25 skipped)
 
-### 🔜 Next Up — Core Pipeline Stages (5/20)
+### 🔜 Next Up — Core Pipeline Stages (4/20)
 
-1. Embeddings pipeline (executor exists, needs Azure OpenAI integration)
-3. RAG retrieval layer (vector search API, top-k chunk retrieval)
+1. RAG retrieval layer (vector search API, top-k chunk retrieval)
 4. Prompting & structured extraction (executor exists, needs LLM implementation)
 5. Validation & business rules (executor exists, needs validation logic)
 6. Persistence & outbox (database exists, needs extraction results schema & outbox)
@@ -89,7 +89,7 @@
 
 - ~~Acceptance: search chunks are sized to control token count and each chunk contains sourceId + offsets.~~
 
-- **Status: COMPLETED** (2026-03-04) - DocumentChunker with sentence-boundary splitting (regex-based), 3 chunk types (Text, Table, FormField), configurable max chunk size (512 tokens default), overlap (50 tokens default), token estimation factor (1.3x). ChunkStageActivity, ChunkStageExecutor, StageMetadataKeys centralized constants. Full metadata tracking: page numbers, character offsets, source block lineage, token counts. Models: DocumentChunk (sealed record), ChunkMetadata, ChunkResult, ChunkType enum (Domain layer). 345 total tests (320 succeeded, 25 skipped). Business logic documented in `docs/business-logic/document-chunking.md`.
+- **Status: COMPLETED** (2026-03-04) - DocumentChunker with sentence-boundary splitting (regex-based), 3 chunk types (Text, Table, FormField), configurable max chunk size (512 tokens default), overlap (50 tokens default), token estimation factor (1.3x). ChunkStageActivity, ChunkStageExecutor, StageMetadataKeys centralized constants. Full metadata tracking: page numbers, character offsets, source block lineage, token counts. Models: DocumentChunk (sealed record), ChunkMetadata, ChunkResult, ChunkType enum (Domain layer). Business logic documented in `docs/business-logic/document-chunking.md`.
 
 ## Embeddings pipeline
 
@@ -97,7 +97,7 @@
 
 - Acceptance: embeddings stored and retrievable by vector similarity; embedding cache avoids re-computation for same document hash.
 
-- **Status: IN PROGRESS** - EmbedStageExecutor and EmbedStageActivity exist with comments indicating Azure OpenAI embedding generation and vector database storage planned. Need to implement actual embedding service, vector store integration, and caching logic.
+- **Status: COMPLETED** (2026-04-05) - Full embedding pipeline: OpenAIEmbeddingService (supports both Azure OpenAI and plain OpenAI via config), dual vector store (PgVectorStoreService for local dev, AzureSearchVectorStoreService for production), EmbedStageActivity with batching, error handling (StageResult.Failure pattern), blob storage for EmbedResult. 20 TUnit tests covering guards, validation, batching, error handling, logging, cancellation. SQL injection protection, singleton NpgsqlDataSource, schema init safety. Business logic documented in `docs/business-logic/embeddings-pipeline.md`. Docker-compose local dev with pgvector on port 5433.
 
 ## RAG retrieval layer
 
@@ -177,7 +177,7 @@
 
 - ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: COMPLETED** - 345 tests (320 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
+- **Status: COMPLETED** - 372 tests (347 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), embedding pipeline (20 tests: guards, batching, error handling, logging), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
 
 ## ModelOps & dataset improvements
 

@@ -55,6 +55,7 @@ classDiagram
     IJobStageActivity <|.. OcrStageActivity
     IJobStageActivity <|.. PreprocessStageActivity
     IJobStageActivity <|.. ChunkStageActivity
+    IJobStageActivity <|.. EmbedStageActivity
     PipelineActivityFactory --> IJobStageActivity : creates
 ```
 
@@ -66,7 +67,7 @@ classDiagram
 | `documentId` | Guid | Orchestrator | All stages |
 | `blobContainer` | string | Orchestrator | OCR |
 | `blobPath` | string | Orchestrator | OCR |
-| `tenantId` | string | Orchestrator | OCR, Preprocess, Chunk |
+| `tenantId` | string | Orchestrator | OCR, Preprocess, Chunk, Embed |
 | `extractionProfile` | string | Orchestrator | Extract |
 | `ocrBlobPath` | string | OCR | Preprocess |
 | `preprocessBlobPath` | string | Preprocess | Chunk |
@@ -75,7 +76,11 @@ classDiagram
 | `textChunks` | int | Chunk | — |
 | `tableChunks` | int | Chunk | — |
 | `totalTokens` | int | Chunk | — |
-| `processingDurationMs` | long | Chunk | — |
+| `processingDurationMs` | long | Chunk, Embed | — |
+| `embedBlobPath` | string | Embed | Extract |
+| `embeddedChunks` | int | Embed | — |
+| `embeddingModel` | string | Embed | — |
+| `embeddingDimensions` | int | Embed | — |
 
 ## Constraints
 
