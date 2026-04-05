@@ -51,6 +51,7 @@ graph LR
 
 ## Table of Contents
 
+- [Architecture & Pipeline Flow](../architecture.md) — System architecture, pipeline stages diagram, data flow, local dev stack
 - [Job Lifecycle](job-lifecycle.md) — ProcessJob state machine, status transitions, idempotency, concurrency
 - [Pipeline Stages](pipeline-stages.md) — Stage execution model, metadata forwarding, error handling patterns
 - [Document Chunking](document-chunking.md) — Chunking strategy, chunk types, token estimation, overlap
