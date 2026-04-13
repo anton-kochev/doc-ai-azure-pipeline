@@ -25,4 +25,11 @@ public static class StageMetadataKeys
     public const string EmbeddedChunks = "embeddedChunks";
     public const string EmbeddingModel = "embeddingModel";
     public const string EmbeddingDimensions = "embeddingDimensions";
+
+    // Retrieval keys (consumed by Extract stage)
+    public const string RetrievedChunks = "retrievedChunks";
+    public const string RetrievalTopK = "retrievalTopK";
+    public const string RetrievalScoreThreshold = "retrievalScoreThreshold";
+    public const string RetrievalTotalCandidates = "retrievalTotalCandidates";
+    public const string RetrievalSearchDurationMs = "retrievalSearchDurationMs";
 }

@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using Azure;
-using Azure.Identity;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Models.Embedding;
+using DocProcessing.Application.Models.Retrieval;
+using DocProcessing.Domain.Entities;
 using DocProcessing.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,27 +31,20 @@ public sealed partial class AzureSearchVectorStoreService : IVectorStoreService
     private int _indexEnsured;
 
     public AzureSearchVectorStoreService(
+        SearchIndexClient indexClient,
+        SearchClient searchClient,
         IOptions<AzureSearchOptions> options,
         ILogger<AzureSearchVectorStoreService> logger)
     {
+        ArgumentNullException.ThrowIfNull(indexClient);
+        ArgumentNullException.ThrowIfNull(searchClient);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
+        _indexClient = indexClient;
+        _searchClient = searchClient;
         _options = options.Value;
         _logger = logger;
-
-        if (string.IsNullOrWhiteSpace(_options.Endpoint))
-        {
-            throw new InvalidOperationException(
-                "Azure AI Search endpoint must be configured. " +
-                "Set AzureSearch:Endpoint in configuration.");
-        }
-
-        var endpoint = new Uri(_options.Endpoint);
-        var credential = new DefaultAzureCredential();
-
-        _indexClient = new SearchIndexClient(endpoint, credential);
-        _searchClient = new SearchClient(endpoint, _options.IndexName, credential);
     }
 
     /// <inheritdoc />
@@ -89,6 +83,85 @@ public sealed partial class AzureSearchVectorStoreService : IVectorStoreService
             LogUpsertCancelled(chunks.Count, _options.IndexName);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RetrievedChunk>> SearchAsync(
+        float[] queryEmbedding,
+        Guid documentId,
+        int topK,
+        IReadOnlyList<ChunkType>? chunkTypeFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        string filter = $"documentId eq '{documentId}'";
+        if (chunkTypeFilter is { Count: > 0 })
+        {
+            string typeFilter = string.Join(" or ",
+                chunkTypeFilter.Select(t => $"chunkType eq '{t}'"));
+            filter = $"({filter}) and ({typeFilter})";
+        }
+
+        var searchOptions = new SearchOptions
+        {
+            Filter = filter,
+            Size = topK,
+            VectorSearch = new VectorSearchOptions
+            {
+                Queries =
+                {
+                    new VectorizedQuery(queryEmbedding)
+                    {
+                        KNearestNeighborsCount = topK,
+                        Fields = { "embedding" }
+                    }
+                }
+            },
+            Select = { "chunkId", "documentId", "chunkIndex", "content",
+                       "chunkType", "pageNumbers", "tokenCount" }
+        };
+
+        SearchResults<SearchDocument> response = await _searchClient
+            .SearchAsync<SearchDocument>(null, searchOptions, cancellationToken);
+
+        var results = new List<RetrievedChunk>();
+
+        await foreach (SearchResult<SearchDocument> result in response.GetResultsAsync())
+        {
+            SearchDocument doc = result.Document;
+            results.Add(new RetrievedChunk
+            {
+                ChunkId = doc.GetString("chunkId"),
+                DocumentId = Guid.Parse(doc.GetString("documentId")),
+                ChunkIndex = (int)(long)doc["chunkIndex"],
+                Content = doc.GetString("content"),
+                ChunkType = Enum.Parse<ChunkType>(doc.GetString("chunkType")),
+                PageNumbers = ((IEnumerable<object>)doc["pageNumbers"])
+                    .Select(p => (int)(long)p).ToList(),
+                TokenCount = (int)(long)doc["tokenCount"],
+                Score = NormalizeScore(result.Score)
+            });
+        }
+
+        LogSearchCompleted(results.Count, _options.IndexName);
+
+        return results;
+    }
+
+    /// <summary>
+    /// Converts Azure AI Search's vector score to cosine similarity.
+    /// Azure uses the formula: score = 1 / (1 + cosine_distance).
+    /// We invert to: cosine_similarity = 1 - cosine_distance = 2 - (1 / score), clamped to [0, 1].
+    /// See: https://learn.microsoft.com/azure/search/vector-search-ranking
+    /// </summary>
+    public static double NormalizeScore(double? azureScore)
+    {
+        if (azureScore is null or <= 0.0)
+        {
+            return 0.0;
+        }
+
+        double cosineSimilarity = 2.0 - (1.0 / azureScore.Value);
+        return Math.Clamp(cosineSimilarity, 0.0, 1.0);
     }
 
     private async Task EnsureIndexExistsAsync(CancellationToken cancellationToken)
@@ -169,6 +242,10 @@ public sealed partial class AzureSearchVectorStoreService : IVectorStoreService
     [LoggerMessage(EventId = 6005, Level = LogLevel.Information,
         Message = "Search index ensured. IndexName={IndexName}")]
     private partial void LogIndexEnsured(string indexName);
+
+    [LoggerMessage(EventId = 6006, Level = LogLevel.Information,
+        Message = "Vector search completed. ResultCount={ResultCount}, IndexName={IndexName}")]
+    private partial void LogSearchCompleted(int resultCount, string indexName);
 
     #endregion
 }

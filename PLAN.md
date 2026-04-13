@@ -2,9 +2,9 @@
 
 ## Project Status Summary (Updated: 2026-04-05)
 
-**Overall Progress:** ~60% Complete (11/20)
+**Overall Progress:** ~65% Complete (12/20)
 
-### ✅ Completed (11/20)
+### ✅ Completed (12/20)
 
 - Project scaffold (solution, API, worker, Angular app)
 - Storage & upload flow (blob storage, file validation)
@@ -14,16 +14,16 @@
 - **Pre-processing & normalization** (TextNormalizer, TableConverter, FieldParser — 65+ tests)
 - **Chunking strategy** (DocumentChunker with sentence-boundary splitting, 3 chunk types, overlap)
 - **Embeddings pipeline** (OpenAI/Azure OpenAI, pgvector + Azure AI Search dual vector store — 20 embed tests)
+- **RAG retrieval layer** (RetrievalService, dual vector store search, score normalization, 53 retrieval tests)
 - Monitoring, telemetry & observability (Application Insights, correlation IDs)
 - Retries, idempotency & resiliency (retry policies, DLQ)
-- Testing & quality (372 tests — 347 succeeded, 25 skipped)
+- Testing & quality (437 tests — 400 succeeded, 37 skipped)
 
-### 🔜 Next Up — Core Pipeline Stages (4/20)
+### 🔜 Next Up — Core Pipeline Stages (3/20)
 
-1. RAG retrieval layer (vector search API, top-k chunk retrieval)
-4. Prompting & structured extraction (executor exists, needs LLM implementation)
-5. Validation & business rules (executor exists, needs validation logic)
-6. Persistence & outbox (database exists, needs extraction results schema & outbox)
+1. Prompting & structured extraction (executor exists, needs LLM implementation)
+2. Validation & business rules (executor exists, needs validation logic)
+3. Persistence & outbox (database exists, needs extraction results schema & outbox)
 
 ### 🟡 Supporting Features (5/20)
 
@@ -105,7 +105,7 @@
 
 - Acceptance: retrieval returns useful contextual chunks with source citations for sample queries.
 
-- **Status: NOT STARTED** - No retrieval service found. Need to implement vector search API, chunk retrieval with metadata, and source citation tracking.
+- **Status: COMPLETED** (2026-04-13) - Full RAG retrieval layer: RetrievalService (Application layer) orchestrates query embedding + vector search + score threshold filtering. IVectorStoreService.SearchAsync implemented on both backends — PgVectorStoreService (cosine distance with IVFFlat index) and AzureSearchVectorStoreService (HNSW vector search with score normalization). AzureSearchVectorStoreService refactored to accept SearchClient/SearchIndexClient via DI for testability. Azure score normalization converts `1/(1+cosine_distance)` to cosine similarity. SearchAsync is read-only (no EnsureIndexExistsAsync). Models: RetrievalQuery, RetrievedChunk (with normalized score), RetrievalResult. RetrievalOptions (DefaultTopK=10, DefaultScoreThreshold=0.3, MaxTopK=50). RetrievalFailedException domain exception. 53 retrieval tests: 34 RetrievalService unit tests, 15 Azure Search tests (filter construction, score normalization, result mapping), 4 exception tests. 12 pgvector integration tests (skipped when Docker not running). Business logic documented in `docs/business-logic/retrieval-pipeline.md`.
 
 ## Prompting & structured extraction (LLM)
 
@@ -177,7 +177,7 @@
 
 - ~~Acceptance: CI runs tests; golden regression flags prompt drift or accuracy regressions.~~
 
-- **Status: COMPLETED** - 372 tests (347 succeeded, 25 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), embedding pipeline (20 tests: guards, batching, error handling, logging), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
+- **Status: COMPLETED** - 437 tests (400 succeeded, 37 skipped). 5 test projects: DocProcessing.Api.Tests, DocProcessing.Application.Tests, Infrastructure.Tests, DocProcessing.EndToEnd.Tests, DocProcessing.TestUtilities. Full coverage for ProcessJobService (idempotency, state transitions, concurrency), preprocessing (TextNormalizer, TableConverter, FieldParser), embedding pipeline (20 tests), retrieval layer (53 tests: RetrievalService unit tests, Azure Search search tests with score normalization, pgvector integration tests, exception tests), E2E pipeline flows with PipelineSimulator. FakeLogger, FakeTimeProvider, InMemoryDbContext, ControllableActivityFactory for test infrastructure. CI runs all tests on push.
 
 ## ModelOps & dataset improvements
 
@@ -251,8 +251,6 @@ See `docproc/docs/TECH_DEBT_ProcessJob_State_Transitions.md` for detailed tracki
 
 ### Next Priorities
 
-1. **Embeddings pipeline** — Azure OpenAI embedding service, vector store integration
-2. **RAG retrieval layer** — Vector search API, top-k chunk retrieval with citations
-3. **Prompting & structured extraction** — LLM prompting with JSON schema, few-shot examples
-4. **Validation & business rules** — Field-level validators, confidence scoring, ManualReview flagging
-5. **Persistence & outbox** — Extraction results schema, audit trail, outbox pattern
+1. **Prompting & structured extraction** — LLM prompting with JSON schema, few-shot examples
+2. **Validation & business rules** — Field-level validators, confidence scoring, ManualReview flagging
+3. **Persistence & outbox** — Extraction results schema, audit trail, outbox pattern

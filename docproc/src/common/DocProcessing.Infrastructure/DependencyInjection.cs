@@ -2,8 +2,11 @@ using System.ClientModel;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using DocProcessing.Application.Configuration;
+using Azure.Search.Documents;
+using Azure.Search.Documents.Indexes;
 using DocProcessing.Application.Interfaces;
 using DocProcessing.Application.Pipeline.Options;
+using DocProcessing.Application.Services;
 using DocProcessing.Application.Services.OCR;
 using DocProcessing.Infrastructure.Factories;
 using DocProcessing.Infrastructure.MessageBroker;
@@ -83,6 +86,21 @@ public static class DependencyInjection
         if (string.Equals(provider, "AzureSearch", StringComparison.OrdinalIgnoreCase))
         {
             services.Configure<AzureSearchOptions>(configuration.GetSection("VectorStore:AzureSearch"));
+            services.AddSingleton(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AzureSearchOptions>>().Value;
+                var endpoint = new Uri(opts.Endpoint
+                    ?? throw new InvalidOperationException("VectorStore:AzureSearch:Endpoint must be configured."));
+                var credential = new DefaultAzureCredential();
+                return new SearchIndexClient(endpoint, credential);
+            });
+            services.AddSingleton(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<AzureSearchOptions>>().Value;
+                var endpoint = new Uri(opts.Endpoint!);
+                var credential = new DefaultAzureCredential();
+                return new SearchClient(endpoint, opts.IndexName, credential);
+            });
             services.AddScoped<IVectorStoreService, AzureSearchVectorStoreService>();
         }
         else
@@ -97,6 +115,10 @@ public static class DependencyInjection
             });
             services.AddScoped<IVectorStoreService, PgVectorStoreService>();
         }
+
+        // Retrieval
+        services.Configure<RetrievalOptions>(configuration.GetSection(RetrievalOptions.SectionName));
+        services.AddScoped<IRetrievalService, RetrievalService>();
 
         // Register factories
         services.AddTransient<IPipelineActivityFactory, PipelineActivityFactory>();

@@ -56,4 +56,5 @@ graph LR
 - [Pipeline Stages](pipeline-stages.md) — Stage execution model, metadata forwarding, error handling patterns
 - [Document Chunking](document-chunking.md) — Chunking strategy, chunk types, token estimation, overlap
 - [Embeddings Pipeline](embeddings-pipeline.md) — Embedding generation, dual vector store (pgvector/Azure AI Search), batch processing, cost considerations
+- [Retrieval Pipeline](retrieval-pipeline.md) — RAG retrieval, vector similarity search, score normalization, threshold filtering, citation metadata
 - [Decision Log](_decision-log.md) — Chronological record of non-obvious design decisions
