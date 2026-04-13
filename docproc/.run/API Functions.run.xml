@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="API Functions" type="ShConfigurationType">
-    <option name="SCRIPT_TEXT" value="cd src/api &amp;&amp; func start --port 7071" />
+    <option name="SCRIPT_TEXT" value="echo 'Waiting for SQL Server...' &amp;&amp; until docker compose ps --format json 2>/dev/null | grep -q 'running'; do sleep 1; done &amp;&amp; sleep 3 &amp;&amp; echo '✓ Infrastructure ready' &amp;&amp; cd src/api &amp;&amp; func start --port 7071" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
     <option name="SCRIPT_PATH" value="" />
     <option name="SCRIPT_OPTIONS" value="" />
